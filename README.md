@@ -33,18 +33,23 @@ Eine Übersichtsversion der Platine ist mit Fritzing umgesetzt und enthält auch
 Fokus der PCB V1.0 ist, das die Platine mit einer Lochrasterplatine umgesetzt werden kann.
 In der BOM findet sich die Stückliste für die Bestückung wieder.
 
-<img src="https://github.com/DieWaldfee/PowerGuard/assets/66571311/1c389b38-95ca-4472-810e-c5202d421479" width="500">
+<img src="https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/92f7a4ba-4fac-46b0-ad95-afd066230ec7" width="500">
 
 Zugehöriges Projekt: https://github.com/users/DieWaldfee/projects/1
 
 **Installation:**
-* Hostname, WLAN-SSID + WLAN-Passwort setzen in /ESP32DevKitV4/PowerGuard.ino <br>
-&nbsp;&nbsp;&nbsp;<img src="https://github.com/DieWaldfee/PowerGuard/assets/66571311/75a4b105-765c-4cfd-9f36-0deae3ae548b" width="300">
-* MQTT-Brokereinstellungen setzen in /ESP32DevKitV4/PowerGuard.ino <br>
-&nbsp;&nbsp;&nbsp;<img src="https://github.com/DieWaldfee/PowerGuard/assets/66571311/897f06d6-190b-4414-a3dd-f5e2cfde511d" height="100">
-* MQTT-Pfade setzen in /ESP32DevKitV4/PowerGuard.ino <br>
-&nbsp;&nbsp;&nbsp;<img src="https://github.com/DieWaldfee/PowerGuard/assets/66571311/4f8c1ffd-b743-4ed1-b313-fc14fc3ef089" height="100">
-* bei Fehlern kann in Zeile 13 der Debug-Level für die Ausgaben auf den serial Monitor eingestellt werden: 0 = BootUp only; 1 = Basic; 2 = Advanced; 3 = Absolut
+* Hostname, WLAN-SSID + WLAN-Passwort setzen in /ESP32DevKitV4/Heizstabsteuerung.ino <br>
+&nbsp;&nbsp;&nbsp;<img src="https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/e3f04de3-2fe1-4fca-9ba6-568735fa9978" width="300">
+* MQTT-Brokereinstellungen setzen in /ESP32DevKitV4/Heizstabsteuerung.ino <br>
+&nbsp;&nbsp;&nbsp;<img src="https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/e078c020-9c87-4371-9116-31cc27b425d8" height="80">
+* MQTT-Pfade setzen in /ESP32DevKitV4/Heizstabsteuerung.ino <br>
+&nbsp;&nbsp;&nbsp;<img src="https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/8c7e2ce7-50d5-40ab-afa6-d198717da527" height="120">
+* Adressen der DS10B20-Sensoren ermittel und in /ESP32DevKitV4/Heizstabsteuerung.ino eintragen. Hierzu muss der Debuglevel auf 1 (Zeile 14) gestellt werden und die Ausgabe im serial Monitor beobachtet werden. OnStart gibt der ESP32 diese Daten dann aus.<br>
+&nbsp;&nbsp;&nbsp;<img src="https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/c384a3db-b12c-4c20-9861-f3e6ab5a7247" height="50">
+* Kalibrierung der Stromsensoren in /ESP32DevKitV4/Heizstabsteuerung.ino <br>
+Die STC013-Sensoren sind bezüglich der Einbaulage empfindlich. Die Kalibrierung lohnt erst im Endmontierten Zustand. der Istwert je Phase wird hierzu im geschalteten Zustand per Zangenampermeter gemessen. hierzu kann dem ESP das Kommando z.B. "L1 ein" auf /command gesendet werden. Bei eingestelltem Debuglevel auf 1 (Zeile 14) gibt der ESP32 die ermittelten Ströme aus. über die Formel ADC_L1_corr = Asoll/Aist * 15A kann der Korrekturwert (hier am Beispiel eines 15A-Sensors) berechnet werden. Nachdem die Schaltung mit dem Kommando z.B. "L1 aus" auf /command wieder ausgeschaltet wurde kann der gemessene 0-A-Wert abgelesen und als Korrekturwert in ADC_L1_zeroCorr angegeben werden.
+&nbsp;&nbsp;&nbsp;<img src="https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/318f3560-bf0c-43aa-8174-7c725d262b2a" height="120">
+* bei Fehlern kann in Zeile 14 der Debug-Level für die Ausgaben auf den serial Monitor eingestellt werden: 0 = BootUp only; 1 = Basic; 2 = Advanced; 3 = Absolut
 * ESP-Software wird über die Arduino-IDE aus das "ESP32 Dev Kit V4" compiliert und übertragen.
 * Platine entweder via Eagle an PCB-Hersteller übermitteln oder mit einer Lochrasterplatine per Hand aufbauen.
 * Platine bestücken + ESP und Level-Shifter (3.3V <-> 5V) aufsetzen.
@@ -55,16 +60,11 @@ Zugehöriges Projekt: https://github.com/users/DieWaldfee/projects/1
 * Platinennetzteil AC-05-3    <a href="https://www.azdelivery.de/products/copy-of-220v-zu-5v-mini-netzteil"> AZ-Delivery </a>
 * Levelshifter (3.3V <-> 5V)  <a href="https://www.amazon.de/RUNCCI-YUN-Pegelwandler-Converter-BiDirektional-Mikrocontroller/dp/B082F6BSB5/ref=sr_1_2?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=45TPZ9B8CUP9&keywords=level+shifter&qid=1699045033&sprefix=level+shifter%2Caps%2C103&sr=8-2"> Amazon </a>
 * Relais <a href="https://www.amazon.de/gp/product/B0B5816YJ7/ref=ppx_yo_dt_b_search_asin_image?ie=UTF8&th=1"> Amazon </a> oder <a href="https://www.az-delivery.de/products/relais-modul"> AZ Delivery </a>
-* SSR
+* SSR-40DA, Eingang 4-32VDC <a href="https://www.amazon.de/gp/product/B071HP9NJD/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1"> Amazon </a>
 * 12V LED-Treiber als Schaltspannung der SSR-Relais  <a href="https://www.amazon.de/gp/product/B082NLNCSB/ref=ppx_yo_dt_b_search_asin_image?ie=UTF8&psc=1"> Amazon </a>
 * JST-Buchse <a href="https://www.amazon.de/gp/product/B0B2R99X99/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&psc=1"> Amazon </a>
 * Klemmbuchse <a href="https://www.amazon.de/gp/product/B087RN8FDZ/ref=ppx_yo_dt_b_search_asin_title?ie=UTF8&th=1"> Amazon </a>
 * Widerstände 4,7kOhm, 220 Ohm, 330 Ohm, Led grün und rot Amazon / eBay / Conrad...
 * Temperatursensoren DS18B20 <a href="https://www.az-delivery.de/products/2er-set-ds18b20-mit-3m-kabel"> AZ Delivery </a>
-
-**fertige Platine:**
-
-![grafik](https://github.com/DieWaldfee/PowerGuard/assets/66571311/2c3fc57b-6fb9-496c-9dd0-f728c895b6c9)
-
-![grafik](https://github.com/DieWaldfee/PowerGuard/assets/66571311/cb0928ba-aea0-4322-a46b-0f89a735b46d)
-(oberes Relais steuert +5V -> Heizstabsteuerung; unteres Relais steuert die 12V für die SSR-40-DA Lastschaltrelais)
+* Display 16x2 (I2C) <a href="https://www.az-delivery.de/products/bundlelcd-schnittstelle"> AZ Delivery </a>
+* Sensor SCT013 (15A-Version) <a href="https://www.ebay.de/itm/401649505325?hash=item5d842d142d:g:qfcAAOSwt3hcBM4e&amdata=enc%3AAQAIAAAA0KgEqLPBwJ5v2dPxMSGkqbPdewVHlu9uy2CFB%2BhzhWl0xgc9madqMZlqcRs6Wc3fal3sByOXw4OTjDJD5ROsT7j0XoIEg7dg6DU4LENoYSTs2Lsc0dJQO4zoqct%2FeJhtZ5abkd7FmdelHZ%2B6X7udMPOxuFQvSkfjCg5lycrhV5p6hoq3ad6Px5PC0jifm43vGzVTaOA99K6uIJm%2BGWImFnsTzu5l855qGZi%2BdU%2B6e%2BG4HUboj3fOt6nB2IgD2IR6ODGIe1N4vzgpr%2FKM70GiCj4%3D%7Ctkp%3ABFBMuLykj_Ri"> eBay </a>
