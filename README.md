@@ -68,3 +68,13 @@ Die STC013-Sensoren sind bezüglich der Einbaulage empfindlich. Die Kalibrierung
 * Temperatursensoren DS18B20 <a href="https://www.az-delivery.de/products/2er-set-ds18b20-mit-3m-kabel"> AZ Delivery </a>
 * Display 16x2 (I2C) <a href="https://www.az-delivery.de/products/bundlelcd-schnittstelle"> AZ Delivery </a>
 * Sensor SCT013 (15A-Version) <a href="https://www.ebay.de/itm/401649505325?hash=item5d842d142d:g:qfcAAOSwt3hcBM4e&amdata=enc%3AAQAIAAAA0KgEqLPBwJ5v2dPxMSGkqbPdewVHlu9uy2CFB%2BhzhWl0xgc9madqMZlqcRs6Wc3fal3sByOXw4OTjDJD5ROsT7j0XoIEg7dg6DU4LENoYSTs2Lsc0dJQO4zoqct%2FeJhtZ5abkd7FmdelHZ%2B6X7udMPOxuFQvSkfjCg5lycrhV5p6hoq3ad6Px5PC0jifm43vGzVTaOA99K6uIJm%2BGWImFnsTzu5l855qGZi%2BdU%2B6e%2BG4HUboj3fOt6nB2IgD2IR6ODGIe1N4vzgpr%2FKM70GiCj4%3D%7Ctkp%3ABFBMuLykj_Ri"> eBay </a>
+
+**fertige Steuerung:**
+![20230820_131926](https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/8ce82430-6d1a-4b85-abbd-9d8a510f3b65)
+(Displayanzeige mit Schaltzustand der Phasen L1-L3, Lüfter, MQTT-Connect in der ersten Zeile. DIe zweite Zeile zeigt die Temperaturen Max am höchsten Punkt und den Sensor 1 und 2 am Relegungspunkt)
+![IMG-20230805-WA0003](https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/0771626f-ae4e-4942-ac0d-6cf69c9a33be)
+(Gesamtschaltung mit PowerGuard, Heizstabsteuerung, Relais und Led-Treiber)
+![IMG-20230805-WA0001](https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/d60cfc04-1979-49b2-b2af-f792f0acbdc4)
+(Gesamtschaltung mit angeschlossenen Sensoren)
+![20230820_132003](https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/762af524-1a9f-48d2-b9e9-3894cdf792a2)
+(Gesamtschaltung am Pufferspeicher - links die Steuerung und rechts die SSR-Relais und deren Kühlkörper)
