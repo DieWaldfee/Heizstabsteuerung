@@ -25,15 +25,16 @@ Eine Übersichtsversion der Platine ist mit Fritzing umgesetzt und enthält auch
 - 230V Stromversorgung oder alternativ eine 5V Versorgung über z.B. ein USB-Ladegerät (muss 2 ESP32 sicher versorgen können -> 2A reicht völlig aus) oder über die Schraubklemmen anderweitig versorgt.
 
 **aktuelle Versionen:** <br>
-- ESP-Software    V1.996
-- PCB (Eagle) 	   V1.0
-- BOM             V1.0
-- Fritzing		      V1.0
+- ESP-Software    V2.0.2
+- PCB (Eagle) 	   V2.0.1
+- CAM             V1.0
+- BOM             V2.0
+- Fritzing		      V2.0
  
-Fokus der PCB V1.0 ist, das die Platine mit einer Lochrasterplatine umgesetzt werden kann.
+Die PCB V2.x ist für einen Platinenhersteller konstruiert => CAM-files können einfach der Bestellung beigefügt werden (z.B. bei https://jlcpcb.com für 2$ 5St Stand 11.11.2023) und ein paar Tage später ist die Platine fertig..
 In der BOM findet sich die Stückliste für die Bestückung wieder.
 
-<img src="https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/92f7a4ba-4fac-46b0-ad95-afd066230ec7" width="500">
+<img src="https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/012c4830-6c5e-4a43-a736-db7f79b648a9" width="500">
 
 Zugehöriges Projekt: https://github.com/users/DieWaldfee/projects/1
 
@@ -72,9 +73,7 @@ Die STC013-Sensoren sind bezüglich der Einbaulage empfindlich. Die Kalibrierung
 **fertige Steuerung:**
 ![20230820_131926](https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/8ce82430-6d1a-4b85-abbd-9d8a510f3b65)
 (Displayanzeige mit Schaltzustand der Phasen L1-L3, Lüfter, MQTT-Connect in der ersten Zeile. DIe zweite Zeile zeigt die Temperaturen Max am höchsten Punkt und den Sensor 1 und 2 am Relegungspunkt)
-![IMG-20230805-WA0003](https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/0771626f-ae4e-4942-ac0d-6cf69c9a33be)
-(Gesamtschaltung mit PowerGuard, Heizstabsteuerung, Relais und Led-Treiber)
-![IMG-20230805-WA0001](https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/d60cfc04-1979-49b2-b2af-f792f0acbdc4)
-(Gesamtschaltung mit angeschlossenen Sensoren)
+![20231111_231950](https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/001eba06-009d-47a7-98ff-cb59cd973951)
+(bestückte Heizstabsteuerung mit angeschlossenen Strom-Sensoren und Display)
 ![20230820_132003](https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/762af524-1a9f-48d2-b9e9-3894cdf792a2)
 (Gesamtschaltung am Pufferspeicher - links die Steuerung und rechts die SSR-Relais und deren Kühlkörper)
