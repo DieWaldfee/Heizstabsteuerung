@@ -57,6 +57,20 @@ Die STC013-Sensoren sind bezüglich der Einbaulage empfindlich. Die Kalibrierung
 * Relais anschließen.
 * 12V Versorgung der Heizstabsteuerung wird über LED-Treiber realisiert.
 
+**Displayinhalte:**
+* Zeile 1;
+  * L1 => Leiter 1 / Phase 1
+  * L2 => Leiter 2 / Phase 2
+  * L3 => Leiter 3 / Phase 3
+  * hinter Lx: "-" => nicht geschaltet; "*" => geschaltet  
+  * hinter Schaltzustand: "-" => ungeprüft; "x" => Fehler zwischen Strommessung und Soll-Schaltzustand; ":heavy_check_mark:" => Strommessung korrekt vs. Sollschaltzustand geprüft
+  * hinter dem Block L3 folgt das Symbol für den Lüfterzustand: " " => Lüfter nicht geschaltet; ">>Lüftersymbol<<" => Lüfter geschaltet
+  * hinter dem Lüftersymbol folgt MQTT-Symbol: " " => kein MQTT-Verbindung gegeben; "<<Wifi-Symbol>>" => MQTT-Verbingung aktiv
+Zeile 2:
+  * T_Top: Temperatursensor am obersten Messpunkt - dient der Safety, um nicht zu überhitzen [°C]
+  * T_Messpunkt_1: erste Messung auf der Entschiedungsebene (in der Regel parallel zum Sensor der Heizung) [°C]
+  * T_Messpunkt_2: zweite Messung auf der Entschiedungsebene [°C]
+
 **Bezugsquellen:**
 * Platinennetzteil AC-05-3    <a href="https://www.azdelivery.de/products/copy-of-220v-zu-5v-mini-netzteil"> AZ-Delivery </a>
 * Levelshifter (3.3V <-> 5V)  <a href="https://www.amazon.de/RUNCCI-YUN-Pegelwandler-Converter-BiDirektional-Mikrocontroller/dp/B082F6BSB5/ref=sr_1_2?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=45TPZ9B8CUP9&keywords=level+shifter&qid=1699045033&sprefix=level+shifter%2Caps%2C103&sr=8-2"> Amazon </a>
