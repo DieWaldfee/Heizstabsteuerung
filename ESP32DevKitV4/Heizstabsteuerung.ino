@@ -9,6 +9,7 @@
 #include <esp_task_wdt.h>
 
 #define LED_ERROR 23
+#define LED_MSG 4
 #define LED_OK 19
 #define ONE_WIRE_BUS 25
 static byte debug = 0;
@@ -110,26 +111,26 @@ byte fanIcon[8] = {
 // Definition der Zugangsdaten WiFi
 //const char* ssid     = "MS_Baunatal_Keller";
 //const char* password = "akp265DfTG7%";
-#define HOSTNAME "ESP32_Heizstabsteuerung"
-const char* ssid = "MyNETWORK";
-const char* password = "MyPASSWORD";
+#define HOSTNAME "ESP32_Heizstabsteuerung2"
+const char* ssid = "RauchNetz";
+const char* password = "a{4JRs.WC,{s";
 WiFiClient myWiFiClient;
 
 //Definition der Zugangsdaten MQTT
-#define MQTT_SERVER "MyIP"
+#define MQTT_SERVER "192.168.2.127"
 #define MQTT_PORT 1883
-#define MQTT_USER "My_ioBrokerUSER"
-#define MQTT_PASSWORD "My_ioBrokerPASSWORD"
-#define MQTT_CLIENTID "ESP32_Heizstabsteuerung" //Name muss eineindeutig auf dem MQTT-Broker sein!
+#define MQTT_USER "mqttbroker"
+#define MQTT_PASSWORD "TimzQXqwqhWs5xX"
+#define MQTT_CLIENTID "ESP32_Heizstabsteuerung2" //Name muss eineindeutig auf dem MQTT-Broker sein!
 #define MQTT_KEEPALIVE 90
 #define MQTT_SOCKETTIMEOUT 30
-#define MQTT_SERIAL_PUBLISH_STATUS "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/status"
-#define MQTT_SERIAL_RECEIVER_COMMAND "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/command"
-#define MQTT_SERIAL_PUBLISH_DS18B20 "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/Temperatur/"
-#define MQTT_SERIAL_PUBLISH_SCT013 "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/Strom/"
-#define MQTT_SERIAL_PUBLISH_STATE "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/state/"
-#define MQTT_SERIAL_PUBLISH_CONFIG "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/config/"
-#define MQTT_SERIAL_PUBLISH_BASIS "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/"
+#define MQTT_SERIAL_PUBLISH_STATUS "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung2/status"
+#define MQTT_SERIAL_RECEIVER_COMMAND "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung2/command"
+#define MQTT_SERIAL_PUBLISH_DS18B20 "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung2/Temperatur/"
+#define MQTT_SERIAL_PUBLISH_SCT013 "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung2/Strom/"
+#define MQTT_SERIAL_PUBLISH_STATE "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung2/state/"
+#define MQTT_SERIAL_PUBLISH_CONFIG "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung2/config/"
+#define MQTT_SERIAL_PUBLISH_BASIS "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung2/"
 String mqttTopic;
 String mqttJson;
 String mqttPayload;
@@ -1358,10 +1359,10 @@ void printFanMQTT() {
   if (debug > 2) Serial.println(mqttPayload);
 }
 //LED-Blik-OK
-void LEDblinkOK(){
-  digitalWrite(LED_OK, HIGH);
+void LEDblinkMSG(){
+  digitalWrite(LED_MSG, HIGH);
   delay(150);
-  digitalWrite(LED_OK, LOW);
+  digitalWrite(LED_MSG, LOW);
 }
 //-------------------------------------
 //MQTT-Status-Task
@@ -1424,7 +1425,7 @@ static void MQTTstate (void *args){
     }
 
     // Task schlafen legen - restart MQTTStateRefresh ticks
-    LEDblinkOK();
+    LEDblinkMSG();
     vTaskDelayUntil(&ticktime, MQTTStateRefresh);
   }
 }
@@ -2075,7 +2076,9 @@ void setup() {
   while (!Serial)
   Serial.println("Start Setup");
   pinMode(LED_ERROR, OUTPUT);
-  digitalWrite(LED_ERROR, LOW);
+  digitalWrite(LED_ERROR, HIGH);
+  pinMode(LED_MSG, OUTPUT);
+  digitalWrite(LED_MSG, HIGH);
   pinMode(LED_OK, OUTPUT);
   digitalWrite(LED_OK, HIGH);
   //ADC Konfiguration via emonlib
@@ -2344,6 +2347,9 @@ void setup() {
   assert(rc == pdPASS);
   Serial.println("Phasenprüfung Phase3 gestartet.");
   //OK-Blinker
+  digitalWrite(LED_ERROR, LOW);
+  digitalWrite(LED_OK, LOW);
+  delay(250);
   digitalWrite(LED_OK, HIGH);
   delay(250);
   digitalWrite(LED_OK, LOW);
