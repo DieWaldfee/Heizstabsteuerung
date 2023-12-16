@@ -108,8 +108,6 @@ byte fanIcon[8] = {
 };
 
 // Definition der Zugangsdaten WiFi
-//const char* ssid     = "MS_Baunatal_Keller";
-//const char* password = "akp265DfTG7%";
 #define HOSTNAME "ESP32_Heizstabsteuerung"
 const char* ssid = "MyNETWORK";
 const char* password = "MyPASSWORD";
