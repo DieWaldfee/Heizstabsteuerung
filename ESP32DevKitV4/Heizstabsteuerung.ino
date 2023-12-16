@@ -109,18 +109,16 @@ byte fanIcon[8] = {
 };
 
 // Definition der Zugangsdaten WiFi
-//const char* ssid     = "MS_Baunatal_Keller";
-//const char* password = "akp265DfTG7%";
 #define HOSTNAME "ESP32_Heizstabsteuerung2"
-const char* ssid = "RauchNetz";
-const char* password = "a{4JRs.WC,{s";
+const char* ssid = "Your Network";
+const char* password = "YourPassword";
 WiFiClient myWiFiClient;
 
 //Definition der Zugangsdaten MQTT
 #define MQTT_SERVER "192.168.2.127"
 #define MQTT_PORT 1883
 #define MQTT_USER "mqttbroker"
-#define MQTT_PASSWORD "TimzQXqwqhWs5xX"
+#define MQTT_PASSWORD "YourMQTTpassword"
 #define MQTT_CLIENTID "ESP32_Heizstabsteuerung2" //Name muss eineindeutig auf dem MQTT-Broker sein!
 #define MQTT_KEEPALIVE 90
 #define MQTT_SOCKETTIMEOUT 30
