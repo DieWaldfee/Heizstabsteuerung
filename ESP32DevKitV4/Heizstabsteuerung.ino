@@ -2123,8 +2123,7 @@ void setup() {
   WiFi.begin(ssid,password);
   while (WiFi.status() != WL_CONNECTED)
   {
-    ++i;
-    if (i > 240) {
+    if (++i > 240) {
       // Reboot nach 2min der Fehlversuche
       Serial.println("WLAN scheint nicht mehr erreichbar! Reboot!!");
       ESP.restart();
