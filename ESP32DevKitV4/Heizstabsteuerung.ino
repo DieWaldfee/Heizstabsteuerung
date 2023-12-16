@@ -1442,14 +1442,13 @@ void mqttConnect () {
   Serial.print(" wird aufgebaut ");  
   while (!mqttClient.connected()) {
     Serial.print(".");
-    ++i;
     if (mqttClient.connect(MQTT_CLIENTID, MQTT_USER, MQTT_PASSWORD, MQTT_SERIAL_PUBLISH_STATUS, 0, true, "false")) {
       mqttClient.publish(MQTT_SERIAL_PUBLISH_STATUS, "true", true);
       Serial.println("");
       Serial.print("MQTT verbunden!");
     } 
     else {
-      if (i > 20) {
+      if (++i > 20) {
         Serial.println("MQTT scheint nicht mehr erreichbar! Reboot!!");
         ESP.restart();
       }
