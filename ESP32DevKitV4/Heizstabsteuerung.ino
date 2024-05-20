@@ -34,12 +34,12 @@ EnergyMonitor emon1;
 EnergyMonitor emon2;
 EnergyMonitor emon3;
 //Kalibrierung auf den verwendeten Sensor erforderlich - Ausgleich von Toleranzen!
-float ADC_L1_corr = 14.48;            // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L1_corr = Aist/15A => ADC_L1_corr = Asoll/Aist * 15A)
-float ADC_L2_corr = 14.59;            // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L2_corr = Aist/15A => ADC_L2_corr = Asoll/Aist * 15A)
-float ADC_L3_corr = 14.75;            // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L3_corr = Aist/15A => ADC_L3_corr = Asoll/Aist * 15A)
+float ADC_L1_corr = 13.00;            // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L1_corr = Aist/15A => ADC_L1_corr = Asoll/Aist * 15A)
+float ADC_L2_corr = 12.92;            // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L2_corr = Aist/15A => ADC_L2_corr = Asoll/Aist * 15A)
+float ADC_L3_corr = 12.96;            // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L3_corr = Aist/15A => ADC_L3_corr = Asoll/Aist * 15A)
 float ADC_L1_zeroCorr = 0.12;         // Basiskorrketur bei 0A (Irms_korr = Irms - zeroCorr)@0A - korrigiert Unzulänglichkeiten der Widerstände
-float ADC_L2_zeroCorr = 0.08;         // Basiskorrketur bei 0A (Irms_korr = Irms - zeroCorr)@0A - korrigiert Unzulänglichkeiten der Widerstände
-float ADC_L3_zeroCorr = 0.06;         // Basiskorrketur bei 0A (Irms_korr = Irms - zeroCorr)@0A - korrigiert Unzulänglichkeiten der Widerstände
+float ADC_L2_zeroCorr = 0.10;         // Basiskorrketur bei 0A (Irms_korr = Irms - zeroCorr)@0A - korrigiert Unzulänglichkeiten der Widerstände
+float ADC_L3_zeroCorr = 0.10;         // Basiskorrketur bei 0A (Irms_korr = Irms - zeroCorr)@0A - korrigiert Unzulänglichkeiten der Widerstände
 
 //Schaltausgaenge für Phase 1-3 und Luefter
 #define PHASE1 16                     // Steuerpin für Phase 1 on/off
@@ -109,26 +109,26 @@ byte fanIcon[8] = {
 };
 
 // Definition der Zugangsdaten WiFi
-#define HOSTNAME "ESP32_Heizstabsteuerung2"
-const char* ssid = "Your Network";
-const char* password = "YourPassword";
+#define HOSTNAME "ESP32_Heizstabsteuerung"
+const char* ssid = "WLANSSID";
+const char* password = "password";
 WiFiClient myWiFiClient;
 
 //Definition der Zugangsdaten MQTT
-#define MQTT_SERVER "192.168.2.127"
+#define MQTT_SERVER "192.168.2.1"
 #define MQTT_PORT 1883
-#define MQTT_USER "mqttbroker"
-#define MQTT_PASSWORD "YourMQTTpassword"
-#define MQTT_CLIENTID "ESP32_Heizstabsteuerung2" //Name muss eineindeutig auf dem MQTT-Broker sein!
+#define MQTT_USER "mqtt_user"
+#define MQTT_PASSWORD "password"
+#define MQTT_CLIENTID "ESP32_Heizstabsteuerung" //Name muss eineindeutig auf dem MQTT-Broker sein!
 #define MQTT_KEEPALIVE 90
 #define MQTT_SOCKETTIMEOUT 30
-#define MQTT_SERIAL_PUBLISH_STATUS "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung2/status"
-#define MQTT_SERIAL_RECEIVER_COMMAND "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung2/command"
-#define MQTT_SERIAL_PUBLISH_DS18B20 "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung2/Temperatur/"
-#define MQTT_SERIAL_PUBLISH_SCT013 "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung2/Strom/"
-#define MQTT_SERIAL_PUBLISH_STATE "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung2/state/"
-#define MQTT_SERIAL_PUBLISH_CONFIG "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung2/config/"
-#define MQTT_SERIAL_PUBLISH_BASIS "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung2/"
+#define MQTT_SERIAL_PUBLISH_STATUS "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/status"
+#define MQTT_SERIAL_RECEIVER_COMMAND "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/command"
+#define MQTT_SERIAL_PUBLISH_DS18B20 "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/Temperatur/"
+#define MQTT_SERIAL_PUBLISH_SCT013 "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/Strom/"
+#define MQTT_SERIAL_PUBLISH_STATE "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/state/"
+#define MQTT_SERIAL_PUBLISH_CONFIG "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/config/"
+#define MQTT_SERIAL_PUBLISH_BASIS "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/"
 String mqttTopic;
 String mqttJson;
 String mqttPayload;
@@ -139,22 +139,26 @@ PubSubClient mqttClient(myWiFiClient);
 
 // Anzahl der angeschlossenen DS18B20 - Sensoren
 int DS18B20_Count = 0; //Anzahl der erkannten DS18B20-Sensoren
-//Sensorsetting (Ausgabe im Debugmodus (debug = 1) auf dem serial Monitor)
+//Beispiel Sensorsetting (Ausgabe im Debugmodus (debug = 1) auf dem serial Monitor)
   //DS18B20[0]: 23.69 *C (0x28, 0x88, 0x9d, 0x57, 0x04, 0xe1, 0x3c, 0x62) => Slot 2 
   //DS18B20[1]: 23.75 *C (0x28, 0xd2, 0x57, 0x57, 0x04, 0xe1, 0x3c, 0x1c) => Slot 1
   //DS18B20[2]: 23.19 *C (0x28, 0xba, 0x9b, 0x57, 0x04, 0xe1, 0x3c, 0x7d) => Slot 3
 float volatile tempMax = 0.0; //Sensor in Slot 1
 float volatile tempTop1 = 0.0; //Sensor in Slot 2
 float volatile tempTop2 = 0.0; //Sensor in Slot 3
-const char* Adresse1 = "0x28, 0xd2, 0x57, 0x57, 0x04, 0xe1, 0x3c, 0x1c"; // Adresee kann über den Debugmodus (debug = 1) ermittelt werden aus dem serial Monitor
-const char* Adresse2 = "0x28, 0x88, 0x9d, 0x57, 0x04, 0xe1, 0x3c, 0x62"; // Adresee kann über den Debugmodus (debug = 1) ermittelt werden aus dem serial Monitor
-const char* Adresse3 = "0x28, 0xba, 0x9b, 0x57, 0x04, 0xe1, 0x3c, 0x7d"; // Adresee kann über den Debugmodus (debug = 1) ermittelt werden aus dem serial Monitor
+const char* Adresse1 = "0x28, 0xff, 0x64, 0x1f, 0x41, 0xe9, 0xb9, 0x17"; // temp_Max - Adresee kann über den Debugmodus (debug = 1) ermittelt werden aus dem serial Monitor
+const char* Adresse2 = "0x28, 0xcb, 0x1d, 0x43, 0xd4, 0xe8, 0x21, 0x78"; // tempTop1 - Adresee kann über den Debugmodus (debug = 1) ermittelt werden aus dem serial Monitor
+const char* Adresse3 = "0x28, 0xf3, 0xf8, 0x43, 0xd4, 0xad, 0x40, 0x63"; // tempTop2 - Adresee kann über den Debugmodus (debug = 1) ermittelt werden aus dem serial Monitor
 float tempTopLimit = 85.0; //Ab dieser Temperatur werden die Phasen 1, 2 und 3 abgeschalten und der Indikator thermalLimit = 1
 float tempMaxLimit = 90.0; //Ab dieser Temperatur werden die Phasen 1, 2 und 3 abgeschalten und der Indikator thermalLimit = 1 thermalError = 1 & panicMode = 1 -> Zwangsabschaltung!
 float tempHysterese = 1.0; //Phasenzuschaltung erst bei temp < tempTopLimit - tempHysterese - verhindert schnelles Schalten um das Limit
 float deltaT = 2.0;        //Limit des Betrags von Differenz zwischen tempTop1 tempTop2 (|tempTop1-tempTop2|)
 float minTemp = 10.0;      //untere Plausibilitätsgrenze für Temperatursignale. Bei Unterschreitung => Notabschaltung, da ggf. Sensor defekt
 float maxTemp = 95.0;     //obere Plausibilitätsgrenze für Temperatursignale. Bei Überschreitung => Notabschaltung, da ggf. Sensor defekt
+int volatile tempTSensorFail = 0; //Fehlercounter zur Temperaturmessung - Resilienz gegen gelegentliche Fehlauswertungen der Temperatursensoren
+int maxTSensorFail = 3;           //maximal zulässige, hinereinander folgende Sensorfehler - danach panicStop
+float DS18B20_minValue = -55.0;   //unterster Messwert im Messbereich [°C]
+float DS18B20_maxValue = 125.0;   //unterster Messwert im Messbereich [°C]
  
 //Initialisiere OneWire und Thermosensor(en)
 OneWire oneWire(ONE_WIRE_BUS);
@@ -1283,12 +1287,14 @@ void printStateMQTT() {
   if (debug > 2) Serial.print("MQTT phase3error: ");
   if (debug > 2) Serial.println(mqttPayload);
   //lastError
-  mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
-  mqttTopic += "lastError";
-  mqttPayload = lastError;
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
-  if (debug > 2) Serial.print("MQTT phase3error: ");
-  if (debug > 2) Serial.println(mqttPayload);
+  if (lastError != ""){
+    mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
+    mqttTopic += "lastError";
+    mqttPayload = lastError;
+    mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+    if (debug > 2) Serial.print("LastError: ");
+    if (debug > 2) Serial.println(mqttPayload);
+  }
   //thermalLimit
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "thermalLimit";
@@ -1666,8 +1672,30 @@ static void getAmpFromSensor (void *args){
 
 //-------------------------------------
 //Subfunktionen für den TempSensor-Task
+// Temperatursensorenwerte auf die Limits prüfen
+bool checkDS18B20Value (float t){
+  bool res = true;     // true = im Messbereich; false = außerhalb des Messbereichs
+  if ((t < DS18B20_minValue) || (t > DS18B20_maxValue)){
+    //Sensorwert außerhalb des Messbereichs
+    res = false;
+  }
+  if (debug > 2) Serial.print("Prüfe t-Wert auf Gültigkeit: ");
+  if (debug > 2) Serial.print(t);
+  if (debug > 2) Serial.print("°C [");
+  if (debug > 2) Serial.print(DS18B20_minValue);
+  if (debug > 2) Serial.print(",");
+  if (debug > 2) Serial.print(DS18B20_maxValue);
+  if (debug > 2) Serial.print("]; Ergebnis: ");
+  if (debug > 2) Serial.println(res);
+  return res;
+}
 // Temperatursensoren auslesen
 void readDS18B20() {
+  float t1 = 0.0;
+  float t2 = 0.0;
+  float tMax = 0.0;
+  bool res1 = false;
+  bool res2 = false;
   if (debug > 2) Serial.print("Anfrage der Temperatursensoren... ");
   myDS18B20.requestTemperatures();  //Anfrage zum Auslesen der Temperaturen
   if (debug > 2) Serial.println("fertig");
@@ -1681,9 +1709,55 @@ void readDS18B20() {
       Adresse += String(myDS18B20Address[j], HEX);
       if (j < 7) Adresse += ", ";
     }
-    if (Adresse == Adresse1) tempMax = myDS18B20.getTempCByIndex(i);
-    if (Adresse == Adresse2) tempTop1 = myDS18B20.getTempCByIndex(i);
-    if (Adresse == Adresse3) tempTop2 = myDS18B20.getTempCByIndex(i);
+    if (Adresse == Adresse1) tMax = myDS18B20.getTempCByIndex(i);
+    if (Adresse == Adresse2) t1 = myDS18B20.getTempCByIndex(i);
+    if (Adresse == Adresse3) t2 = myDS18B20.getTempCByIndex(i);
+  }
+  //Plausibilitätscheck
+  if (checkDS18B20Value(t1)) {
+    tempTop1 = t1;
+    res1 = true;
+  }
+  else {
+    ++tempTSensorFail;
+    res1 = false;
+    mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
+    mqttTopic += "lastError";
+    mqttPayload = "Temperatursensor TTop1 außerhalb des Messbereichts: " + String(t1) + "[C]; Wiederholung: " + String(tempTSensorFail);
+    mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+    if (debug > 2) Serial.print("LastError: ");
+    if (debug > 2) Serial.println(mqttPayload); //(debug > 2)
+  }
+  if (checkDS18B20Value(t2)) {
+    tempTop2 = t2;
+    res2 = true;
+  }
+  else {
+    ++tempTSensorFail;
+    res2 = false;
+    mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
+    mqttTopic += "lastError";
+    mqttPayload = "Temperatursensor TTop2 außerhalb des Messbereichts: " + String(t2) + "[C]; Wiederholung: " + String(tempTSensorFail);
+    mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+    if (debug > 2) Serial.print("LastError: ");
+    if (debug > 2) Serial.println(mqttPayload);
+  }
+  if (checkDS18B20Value(tMax)) {
+    tempMax = tMax;
+    if (res1 && res2) tempTSensorFail = 0;  //t1, t2 und tMax sind korrekt => Fehlercounter auf 0 gesetzt
+  }
+  else {
+    ++tempTSensorFail;
+    mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
+    mqttTopic += "lastError";
+    mqttPayload = "Temperatursensor TMax außerhalb des Messbereichts: " + String(tMax) + "[C]; Wiederholung: " + String(tempTSensorFail);
+    mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+    if (debug > 2) Serial.print("LastError: ");
+    if (debug > 2) Serial.println(mqttPayload);
+  }
+  if (tempTSensorFail > maxTSensorFail) {
+    Serial.println("zu viele Fehler (out of range) beim Auslesen der DS18B20! Reboot!!");
+    ESP.restart();
   }
 }
 //Thermale Limits prüfen und ggf. reagieren
@@ -1698,6 +1772,21 @@ void termalLimits () {
       if (debug) Serial.print("°C am Top-Sensor #1 bzw. ");
       if (debug) Serial.print(tempTop2);
       if (debug) Serial.println("°C am Top-Sensor #2)");
+      //Status der Sensoren - ggf. sind adressen vertauscht
+      if (debug) Serial.print("Sensor Top-max: ");
+      if (debug) Serial.print(tempMax);
+      if (debug) Serial.print("°C :: Adresse: ");
+      if (debug) Serial.println(Adresse1);
+      if (debug) Serial.print("Sensor Top-1: ");
+      if (debug) Serial.print(tempTop1);
+      if (debug) Serial.print("°C :: Adresse: ");
+      if (debug) Serial.println(Adresse2);
+      if (debug) Serial.print("Sensor Top-2: ");
+      if (debug) Serial.print(tempTop2);
+      if (debug) Serial.print("°C :: Adresse: ");
+      if (debug) Serial.println(Adresse3);
+      //lastError absetzen
+      lastError="Zwangsabschaltung wegen Unterschied zwischen Top#1 und Top#2!";
       panicStop();
     }
   }
@@ -1915,7 +2004,7 @@ void printTemp(float t1, float t2, float t3) {
   //Ausgabe auf das Display
   lcd.setCursor(0, 1);
   lcd.print(tempLine);
-  if (debug > 2) Serial.print("Ausgelesene Temperaturem: ");
+  if (debug > 2) Serial.print("Ausgelesene Temperaturen: ");
   if (debug > 2) Serial.print(tempLine);  
   if (debug > 2) Serial.println(" °C");  
 }
@@ -2078,7 +2167,22 @@ void setup() {
   digitalWrite(LED_MSG, HIGH);
   pinMode(LED_OK, OUTPUT);
   digitalWrite(LED_OK, HIGH);
+  //LCD Info
+  // Initialisiere LCD:
+  lcd.init();
+  lcd.backlight();
+  //Startnachricht auf LCD ausgeben
+  lcd.setCursor(0, 0);
+  lcd.print("Starte Steuerung");
+  lcd.setCursor(0, 1);
+  lcd.print("                ");
+  lcd.createChar(0, okCheck);  // Sonderzeichen 0 einführen
+  lcd.createChar(1, grad);     // Sonderzeichen 1 einführen
+  lcd.createChar(2, connIcon); // Sonderzeichen 2 einführen
+  lcd.createChar(3, fanIcon);  // Sonderzeichen 3 einführen
   //ADC Konfiguration via emonlib
+  lcd.setCursor(0, 1);
+  lcd.print("Init ADC...     ");
   emon1.current(ADC_L1, ADC_L1_corr);
   emon2.current(ADC_L2, ADC_L2_corr);
   emon3.current(ADC_L3, ADC_L3_corr);
@@ -2096,27 +2200,33 @@ void setup() {
   phase1error = 0;
   phase2error = 0;
   phase3error = 0;
+  //Strommessungen zum Einpendeln des Messwerts
+  float Irms = 5;
+  Serial.println("Strommessung Phase 1 pendelt sich ein...");
+  while (Irms > ZEROHYST){
+    Irms = emon1.calcIrms(1480) - ADC_L1_zeroCorr;
+    delay(500);
+  }
+  Irms = 5;
+  Serial.println("Strommessung Phase 2 pendelt sich ein...");
+  while (Irms > ZEROHYST){
+    Irms = emon2.calcIrms(1480) - ADC_L2_zeroCorr;
+    delay(500);
+  }
+  Irms = 5;
+  Serial.println("Strommessung Phase 3 pendelt sich ein...");
+  while (Irms > ZEROHYST){
+    Irms = emon3.calcIrms(1480) - ADC_L3_zeroCorr;
+    delay(500);
+  }
   //Initiierung des Luefters
   pinMode(FAN0, OUTPUT);
   digitalWrite(FAN0, HIGH);    //angeschlossenes SolidStade Relais schaltet auf LOW
   fanOn = 0;
-  //LCD Info
-  // Initialisiere LCD:
-  lcd.init();
-  lcd.backlight();
-  //Startnachricht auf LCD ausgeben
-  lcd.setCursor(0, 0);
-  lcd.print("Starte Steuerung");
-  lcd.setCursor(0, 1);
-  lcd.print("                ");
-  lcd.createChar(0, okCheck);  // Sonderzeichen 0 einführen
-  lcd.createChar(1, grad);     // Sonderzeichen 1 einführen
-  lcd.createChar(2, connIcon); // Sonderzeichen 2 einführen
-  lcd.createChar(3, fanIcon);  // Sonderzeichen 3 einführen
  //WiFi-Setup
   int i = 0;
   lcd.setCursor(0, 1);
-  lcd.print("Starte WiFi...");
+  lcd.print("starte WiFi...  ");
   Serial.print("Verbindungsaufbau zu ");
   Serial.print(ssid);
   WiFi.setHostname(HOSTNAME);
@@ -2153,6 +2263,7 @@ void setup() {
   lcd.print(WiFi.localIP());
   lcd.setCursor(0, 1);
   lcd.print("MQTT aktiv      ");
+  delay(1000);
   //DS18B20-Setup
   Serial.println("Auslesen der DS18B20-Sensoren...");
   myDS18B20.begin();
