@@ -7,6 +7,7 @@
 #include <LiquidCrystal_I2C.h>
 #include <EmonLib.h>                   // Auswertung der SCT013-Sensoren
 #include <esp_task_wdt.h>
+#include "secrets.h"
 
 #define LED_ERROR 23
 #define LED_MSG 4
@@ -109,16 +110,9 @@ byte fanIcon[8] = {
 };
 
 // Definition der Zugangsdaten WiFi
-#define HOSTNAME "ESP32_Heizstabsteuerung"
-const char* ssid = "WLANSSID";
-const char* password = "password";
 WiFiClient myWiFiClient;
 
 //Definition der Zugangsdaten MQTT
-#define MQTT_SERVER "192.168.2.1"
-#define MQTT_PORT 1883
-#define MQTT_USER "mqtt_user"
-#define MQTT_PASSWORD "password"
 #define MQTT_CLIENTID "ESP32_Heizstabsteuerung" //Name muss eineindeutig auf dem MQTT-Broker sein!
 #define MQTT_KEEPALIVE 90
 #define MQTT_SOCKETTIMEOUT 30
@@ -1246,6 +1240,7 @@ void printStateMQTT() {
   mqttJson += ",\"phase2error\":\"" + String(phase2error) + "\"";
   mqttJson += ",\"phase3error\":\"" + String(phase3error) + "\"";
   mqttJson += ",\"checkError\":\"" + String(checkError) + "\"";
+  mqttJson += ",\"WiFi_Signal_Strength\":\"" + String(WiFi.RSSI()) + "\"";
   mqttJson += ",\"lastError\":\"" + String(lastError) + "\"";
   mqttJson += ",\"thermalError\":\"" + String(thermalError) + "\"";
   mqttJson += ",\"thermalLimit\":\"" + String(thermalLimit) + "\"}";
@@ -1295,7 +1290,14 @@ void printStateMQTT() {
     if (debug > 2) Serial.print("LastError: ");
     if (debug > 2) Serial.println(mqttPayload);
   }
-  //thermalLimit
+  //WiFi Signalstärke
+  mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
+  mqttTopic += "WiFi_Signal_Strength";
+  mqttPayload = WiFi.RSSI();
+  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  if (debug > 2) Serial.print("WiFi Signalstärke: ");
+  if (debug > 2) Serial.println(mqttPayload);
+//thermalLimit
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "thermalLimit";
   mqttPayload = String(thermalLimit);
@@ -1499,6 +1501,9 @@ static void MQTTwatchdog (void *args){
   //ticktime initialisieren
   ticktime = xTaskGetTickCount();
 
+  er = esp_task_wdt_add(NULL);   // Task zur Überwachung hinzugefügt  
+  assert(er == ESP_OK); 
+
   for (;;){                        // Dauerschleife des Tasks
     // Watchdog zurücksetzen
     esp_task_wdt_reset();
@@ -1531,6 +1536,9 @@ static void integrityCheck (void *args){
 
   //ticktime initialisieren
   ticktime = xTaskGetTickCount();
+
+  er = esp_task_wdt_add(NULL);   // Task zur Überwachung hinzugefügt  
+  assert(er == ESP_OK); 
 
   for (;;){                        // Dauerschleife des Tasks
     // Watchdog zurücksetzen
@@ -1645,6 +1653,9 @@ static void getAmpFromSensor (void *args){
 
   //ticktime initialisieren
   ticktime = xTaskGetTickCount();
+
+  er = esp_task_wdt_add(NULL);   // Task zur Überwachung hinzugefügt  
+  assert(er == ESP_OK); 
 
   for (;;){                        // Dauerschleife des Tasks
     // Watchdog zurücksetzen
@@ -1953,6 +1964,9 @@ static void getTempFromSensor (void *args){
   //ticktime initialisieren
   ticktime = xTaskGetTickCount();
 
+  er = esp_task_wdt_add(NULL);   // Task zur Überwachung hinzugefügt  
+  assert(er == ESP_OK); 
+
   for (;;){                        // Dauerschleife des Tasks
     // Watchdog zurücksetzen
     esp_task_wdt_reset();
@@ -2155,7 +2169,12 @@ static void displayUpdate (void *args){
 void setup() {
   //Watchdog starten
   esp_err_t er;
-  er = esp_task_wdt_init(300,true);  //restart nach 5min = 300s Inaktivität einer der 4 überwachten Tasks 
+  esp_task_wdt_config_t wdt_config = {
+    .timeout_ms = 300000,  // 5 Minuten = 300000 ms
+    .idle_core_mask = (1 << 1),  // Nur Kerne 1 überwachen
+    .trigger_panic = true
+  };
+  er = esp_task_wdt_reconfigure(&wdt_config);  //restart nach 5min = 300s Inaktivität einer der 4 überwachten Tasks 
   assert(er == ESP_OK); 
   // Initialisierung und Plausibilitaetschecks
   Serial.begin(115200);
@@ -2347,12 +2366,6 @@ void setup() {
     &hintegrity,                //handler
     app_cpu);                   //CPU_ID
   assert(rc == pdPASS);
-  er = esp_task_wdt_status(hintegrity);  // Check, ob der Task schon überwacht wird
-  assert(er == ESP_ERR_NOT_FOUND);
-  if (er == ESP_ERR_NOT_FOUND) {
-    er = esp_task_wdt_add(hintegrity);   // Task zur Überwachung hinzugefügt  
-    assert(er == ESP_OK); 
-  }
   Serial.println("Stromstatusintegrität gestartet.");
   rc = xTaskCreatePinnedToCore(
     getTempFromSensor,         //Taskroutine
@@ -2363,12 +2376,6 @@ void setup() {
     &htempSensor,              //handler
     app_cpu);                  //CPU_ID
   assert(rc == pdPASS);
-  er = esp_task_wdt_status(htempSensor);  // Check, ob der Task schon überwacht wird
-  assert(er == ESP_ERR_NOT_FOUND);
-  if (er == ESP_ERR_NOT_FOUND) {
-    er = esp_task_wdt_add(htempSensor);   // Task zur Überwachung hinzugefügt  
-    assert(er == ESP_OK); 
-  }
   Serial.println("TempSensor-Task gestartet.");
   rc = xTaskCreatePinnedToCore(
     getAmpFromSensor,          //Taskroutine
@@ -2379,12 +2386,6 @@ void setup() {
     &hampSensor,               //handler
     app_cpu);                  //CPU_ID
   assert(rc == pdPASS);
-  er = esp_task_wdt_status(hampSensor);  // Check, ob der Task schon überwacht wird
-  assert(er == ESP_ERR_NOT_FOUND);
-  if (er == ESP_ERR_NOT_FOUND) {
-    er = esp_task_wdt_add(hampSensor);   // Task zur Überwachung hinzugefügt  
-    assert(er == ESP_OK); 
-  }
   Serial.println("AmpSensor-Task gestartet.");
   rc = xTaskCreatePinnedToCore(
     MQTTwatchdog,              //Taskroutine
@@ -2395,12 +2396,6 @@ void setup() {
     &hMQTTwatchdog,            //handler
     app_cpu);                  //CPU_ID
   assert(rc == pdPASS);
-  er = esp_task_wdt_status(hMQTTwatchdog);  // Check, ob der Task schon überwacht wird
-  assert(er == ESP_ERR_NOT_FOUND);
-  if (er == ESP_ERR_NOT_FOUND) {
-    er = esp_task_wdt_add(hMQTTwatchdog);   // Task zur Überwachung hinzugefügt  
-    assert(er == ESP_OK); 
-  }
   Serial.println("MQTT-Watchdog-Task gestartet.");
   rc = xTaskCreatePinnedToCore(
     MQTTstate,                 //Taskroutine
