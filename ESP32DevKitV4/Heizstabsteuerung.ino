@@ -1596,7 +1596,8 @@ static void integrityCheck (void *args){
       //letzte Sekunde lag noch ein Fehler vor
       if (err == 1) {
         //Konsistenzfehler -> Notabschaltung
-        lastError = "Integritätsfehler - Schaltzustand und Phasenströme passen nicht zueinander";
+        lastError = "Integritätsfehler - Schaltzustand und Phasenströme passen nicht zueinander. A1: " + String(a1);
+        lastError = lastError + "A; P1on: " + String(p1on) + "; A2: " + String(a2) + "A; P2on: " + String(p2on) + "; A3: " + String(a3) + "A; P3on: " + String(p3on) + ".";
         panicStop();
       } else {
         rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
@@ -1797,7 +1798,7 @@ void termalLimits () {
       if (debug) Serial.print("°C :: Adresse: ");
       if (debug) Serial.println(Adresse3);
       //lastError absetzen
-      lastError="Zwangsabschaltung wegen Unterschied zwischen Top#1 und Top#2!";
+      lastError="Zwangsabschaltung wegen Unterschied zwischen TempTop1 (" + String(tempTop1) + "°C) und TempTop2 (" + String(tempTop2) + "°C)! DeltaT=" + String(deltaT) + "°K";
       panicStop();
     }
   }
