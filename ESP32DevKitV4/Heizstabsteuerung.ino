@@ -108,16 +108,18 @@ byte fanIcon[8] = {
 };
 
 // Definition der Zugangsdaten WiFi
+//const char* ssid     = "MS_Baunatal_Keller";
+//const char* password = "akp265DfTG7%";
 #define HOSTNAME "ESP32_Heizstabsteuerung"
-const char* ssid = "YourSSID";
-const char* password = "WifiPassword";
+const char* ssid = "Your SSID";
+const char* password = "YourPassword";
 WiFiClient myWiFiClient;
 
 //Definition der Zugangsdaten MQTT
-#define MQTT_SERVER "192.168.2.10"
+#define MQTT_SERVER "Your MQTT Broker IP"
 #define MQTT_PORT 1883
-#define MQTT_USER "mqttbrokerUser"
-#define MQTT_PASSWORD "MQTT_password"
+#define MQTT_USER "Your MQTT User"
+#define MQTT_PASSWORD "Your MQTT Password"
 #define MQTT_CLIENTID "ESP32_Heizstabsteuerung" //Name muss eineindeutig auf dem MQTT-Broker sein!
 #define MQTT_KEEPALIVE 90
 #define MQTT_SOCKETTIMEOUT 30
@@ -1245,6 +1247,7 @@ void printStateMQTT() {
   mqttJson += ",\"phase2error\":\"" + String(phase2error) + "\"";
   mqttJson += ",\"phase3error\":\"" + String(phase3error) + "\"";
   mqttJson += ",\"checkError\":\"" + String(checkError) + "\"";
+  mqttJson += ",\"WiFi_Signal_Strength\":\"" + String(WiFi.RSSI()) + "\"";
   mqttJson += ",\"lastError\":\"" + String(lastError) + "\"";
   mqttJson += ",\"thermalError\":\"" + String(thermalError) + "\"";
   mqttJson += ",\"thermalLimit\":\"" + String(thermalLimit) + "\"}";
@@ -1294,6 +1297,13 @@ void printStateMQTT() {
     if (debug > 2) Serial.print("LastError: ");
     if (debug > 2) Serial.println(mqttPayload);
   }
+  //WiFi Signalstärke
+  mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
+  mqttTopic += "WiFi_Signal_Strength";
+  mqttPayload = WiFi.RSSI();
+  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  if (debug > 2) Serial.print("WiFi Signalstärke: ");
+  if (debug > 2) Serial.println(mqttPayload);
   //thermalLimit
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "thermalLimit";
@@ -1587,7 +1597,8 @@ static void integrityCheck (void *args){
       //letzte Sekunde lag noch ein Fehler vor
       if (err == 1) {
         //Konsistenzfehler -> Notabschaltung
-        lastError = "Integritätsfehler - Schaltzustand und Phasenströme passen nicht zueinander";
+        lastError = "Integritätsfehler - Schaltzustand und Phasenströme passen nicht zueinander. A1: " + String(a1);
+        lastError = lastError + "A; P1on: " + String(p1on) + "; A2: " + String(a2) + "A; P2on: " + String(p2on) + "; A3: " + String(a3) + "A; P3on: " + String(p3on) + ".";
         panicStop();
       } else {
         rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
@@ -1785,7 +1796,7 @@ void termalLimits () {
       if (debug) Serial.print("°C :: Adresse: ");
       if (debug) Serial.println(Adresse3);
       //lastError absetzen
-      lastError="Zwangsabschaltung wegen Unterschied zwischen Top#1 und Top#2!";
+      lastError="Zwangsabschaltung wegen Unterschied zwischen TempTop1 (" + String(tempTop1) + "°C) und TempTop2 (" + String(tempTop2) + "°C)! DeltaT=" + String(deltaT) + "°K";
       panicStop();
     }
   }
@@ -2154,7 +2165,12 @@ static void displayUpdate (void *args){
 void setup() {
   //Watchdog starten
   esp_err_t er;
-  er = esp_task_wdt_init(300,true);  //restart nach 5min = 300s Inaktivität einer der 4 überwachten Tasks 
+  esp_task_wdt_config_t wdt_config = {
+    .timeout_ms = 300000,  // 5 Minuten = 300000 ms
+    .idle_core_mask = (1 << 1),  // Nur Kerne 1 überwachen
+    .trigger_panic = true
+  };
+  er = esp_task_wdt_reconfigure(&wdt_config);  //restart nach 5min = 300s Inaktivität einer der 4 überwachten Tasks 
   assert(er == ESP_OK); 
   // Initialisierung und Plausibilitaetschecks
   Serial.begin(115200);
