@@ -177,7 +177,7 @@ static TaskHandle_t hintegrity;
 static TaskHandle_t hMQTTwatchdog;
 
 //Queue-Definition für Stromüberwachung
-#define QUEUEDEPTH 10                 // Tiefe der Queue - 10 Schaltvorgänge einer Phase für 5s
+#define QUEUEDEPTH 30                 // Tiefe der Queue - 30 Schaltvorgänge einer Phase für 5s
 #define QUEUEMAXWAITTIME 3            // Wartezeit für das Senden in eine Queue - danach Error!
 typedef struct {                      // Struktur der Queue-Daten
   TickType_t ticktime;                //gewünchte TickTime der Phasenprüfung
@@ -187,9 +187,9 @@ static QueueHandle_t amp1Queue;        //Queue-Handler für Statuschecks der Pha
 static QueueHandle_t amp2Queue;        //Queue-Handler für Statuschecks der Phase 2
 static QueueHandle_t amp3Queue;        //Queue-Handler für Statuschecks der Phase 3
 static bool DataPack = true;           // Datenpaket für die folgenden freeXQueue
-static QueueHandle_t free1Queue;        //Queue-Handler - wenn leer, dann Integritätscheck Phase 1 durchführbar
-static QueueHandle_t free2Queue;        //Queue-Handler - wenn leer, dann Integritätscheck Phase 2 durchführbar
-static QueueHandle_t free3Queue;        //Queue-Handler - wenn leer, dann Integritätscheck Phase 3 durchführbar
+static QueueHandle_t free1Queue;       //Queue-Handler - wenn leer, dann Integritätscheck Phase 1 durchführbar
+static QueueHandle_t free2Queue;       //Queue-Handler - wenn leer, dann Integritätscheck Phase 2 durchführbar
+static QueueHandle_t free3Queue;       //Queue-Handler - wenn leer, dann Integritätscheck Phase 3 durchführbar
 
 //erforderliche Funtions-Prototypen
 void panicStop(void);
@@ -392,7 +392,7 @@ static void checkPhase1 (void *args){
     //korrekte Zeit zur Überprüfung
     error = 0;
 
-    // -----------------------------------------------------------------------------------------------------------------------------------
+    // ------------------------------------------------------------------------
     // bei schnellen Schaltungen kann die Queue mehr als ein Element enthalten.
     rc = uxQueueMessagesWaiting (amp1Queue);
     if (debug > 2) Serial.print("Anzahl von Queue-Objekten Phase 1: ");
@@ -448,22 +448,21 @@ static void checkPhase1 (void *args){
         lastError = "Phasenfehler Phase 1. Falscher Schaltzustand!";
         panicStop();
       }
+      // ------------------------------------------------------------------------
+      //Prüfung auf Überschreitung des PhasenLimit Phase 1
+      if (amp > plimit) {               
+        if (debug) Serial.print("Phasenlimit auf Phase 1: Sollzustand: ");
+        if (debug) Serial.print(plimit);
+        if (debug) Serial.print(" A; gemessen: ");
+        if (debug) Serial.print(amp);
+        if (debug) Serial.println(" A!");
+        lastError = "Phasenfehler Phase 1. Strom über dem Limit!";
+        panicStop();
+      }
       // Freigabe der Queue für Phase 1
       rc = xQueueReset (free1Queue);
       assert(rc == pdPASS);
     } 
-
-    //--------------------------------------------------------------------------------------------------------------------
-    //Prüfung auf Überschreitung des PhasenLimit Phase 1
-    if (amp > plimit) {               
-      if (debug) Serial.print("Phasenlimit auf Phase 1: Sollzustand: ");
-      if (debug) Serial.print(plimit);
-      if (debug) Serial.print(" A; gemessen: ");
-      if (debug) Serial.print(amp);
-      if (debug) Serial.println(" A!");
-      lastError = "Phasenfehler Phase 1. Strom über dem Limit!";
-      panicStop();
-    }
   }
 }
 //Phasencheck Phase 2-Task
@@ -583,20 +582,19 @@ static void checkPhase2 (void *args){
         lastError = "Phasenfehler Phase 2. Falscher Schaltzustand!";
         panicStop();
       }
+      //Prüfung auf Überschreitung des PhasenLimit Phase 2
+      if (amp > plimit) {               
+        if (debug) Serial.print("Phasenlimit auf Phase 2: Sollzustand: ");
+        if (debug) Serial.print(plimit);
+        if (debug) Serial.print(" A; gemessen: ");
+        if (debug) Serial.print(amp);
+        if (debug) Serial.println(" A!");
+        lastError = "Phasenfehler Phase 2. Strom über dem Limit!";
+        panicStop();
+      }
       // Freigabe der Queue für Phase 2
       rc = xQueueReset (free2Queue);
       assert(rc == pdPASS);
-    }
-
-    //Prüfung auf Überschreitung des PhasenLimit Phase 2
-    if (amp > plimit) {               
-      if (debug) Serial.print("Phasenlimit auf Phase 2: Sollzustand: ");
-      if (debug) Serial.print(plimit);
-      if (debug) Serial.print(" A; gemessen: ");
-      if (debug) Serial.print(amp);
-      if (debug) Serial.println(" A!");
-      lastError = "Phasenfehler Phase 2. Strom über dem Limit!";
-      panicStop();
     }
   }
 }
@@ -717,20 +715,19 @@ static void checkPhase3 (void *args){
         lastError = "Phasenfehler Phase 3. Falscher Schaltzustand!";
         panicStop();
       }
+      //Prüfung auf Überschreitung des PhasenLimit Phase 3
+      if (amp > plimit) {               
+        if (debug) Serial.print("Phasenlimit auf Phase 3: Sollzustand: ");
+        if (debug) Serial.print(plimit);
+        if (debug) Serial.print(" A; gemessen: ");
+        if (debug) Serial.print(amp);
+        if (debug) Serial.println(" A!");
+        lastError = "Phasenfehler Phase 3. Strom über dem Limit!";
+        panicStop();
+      }
       // Freigabe der Queue für Phase 3
       rc = xQueueReset (free3Queue);
       assert(rc == pdPASS);
-    }
-
-    //Prüfung auf Überschreitung des PhasenLimit Phase 3
-    if (amp > plimit) {               
-      if (debug) Serial.print("Phasenlimit auf Phase 3: Sollzustand: ");
-      if (debug) Serial.print(plimit);
-      if (debug) Serial.print(" A; gemessen: ");
-      if (debug) Serial.print(amp);
-      if (debug) Serial.println(" A!");
-      lastError = "Phasenfehler Phase 3. Strom über dem Limit!";
-      panicStop();
     }
   }
 }
@@ -1297,7 +1294,7 @@ void printStateMQTT() {
   mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
   if (debug > 2) Serial.print("WiFi Signalstärke: ");
   if (debug > 2) Serial.println(mqttPayload);
-//thermalLimit
+  //thermalLimit
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "thermalLimit";
   mqttPayload = String(thermalLimit);
@@ -1547,7 +1544,7 @@ static void integrityCheck (void *args){
     //Lesen des Zustands
     if (debug > 1) Serial.print("TickTime: ");
     if (debug > 1) Serial.print(ticktime);
-    if (debug > 1) Serial.println(" | integrityCheck-Task prüft die Konsistenz der Daten");
+    if (debug > 1) Serial.println(" | IntegrityCheck-Task prüft die Konsistenz der Daten");
     while (uxQueueMessagesWaiting (free1Queue) + uxQueueMessagesWaiting (free2Queue) + uxQueueMessagesWaiting (free3Queue) != 0) {
       // die Schleife wird erst überwunden, wenn die drei Queues leer sind und damit alle Schaltvorgänge abgeschlossen und geprüft sind.
       // größerer Zeitverzug nur bei vielen, schnellen Schaltungen zu erwarten.
@@ -2367,6 +2364,11 @@ void setup() {
     &hintegrity,                //handler
     app_cpu);                   //CPU_ID
   assert(rc == pdPASS);
+  er = esp_task_wdt_status(hintegrity);  // Check, ob der Task schon überwacht wird
+  if (er == ESP_ERR_NOT_FOUND) {
+    er = esp_task_wdt_add(hintegrity);   // Task zur Überwachung hinzugefügt  
+    assert(er == ESP_OK); 
+  }
   Serial.println("Stromstatusintegrität gestartet.");
   rc = xTaskCreatePinnedToCore(
     getTempFromSensor,         //Taskroutine
@@ -2377,6 +2379,11 @@ void setup() {
     &htempSensor,              //handler
     app_cpu);                  //CPU_ID
   assert(rc == pdPASS);
+  er = esp_task_wdt_status(htempSensor);  // Check, ob der Task schon überwacht wird
+  if (er == ESP_ERR_NOT_FOUND) {
+    er = esp_task_wdt_add(htempSensor);   // Task zur Überwachung hinzugefügt  
+    assert(er == ESP_OK); 
+  }
   Serial.println("TempSensor-Task gestartet.");
   rc = xTaskCreatePinnedToCore(
     getAmpFromSensor,          //Taskroutine
@@ -2387,6 +2394,11 @@ void setup() {
     &hampSensor,               //handler
     app_cpu);                  //CPU_ID
   assert(rc == pdPASS);
+  er = esp_task_wdt_status(hampSensor);  // Check, ob der Task schon überwacht wird
+  if (er == ESP_ERR_NOT_FOUND) {
+    er = esp_task_wdt_add(hampSensor);   // Task zur Überwachung hinzugefügt  
+    assert(er == ESP_OK); 
+  }
   Serial.println("AmpSensor-Task gestartet.");
   rc = xTaskCreatePinnedToCore(
     MQTTwatchdog,              //Taskroutine
@@ -2397,6 +2409,11 @@ void setup() {
     &hMQTTwatchdog,            //handler
     app_cpu);                  //CPU_ID
   assert(rc == pdPASS);
+  er = esp_task_wdt_status(hMQTTwatchdog);  // Check, ob der Task schon überwacht wird
+  if (er == ESP_ERR_NOT_FOUND) {
+    er = esp_task_wdt_add(hMQTTwatchdog);   // Task zur Überwachung hinzugefügt  
+    assert(er == ESP_OK); 
+  }
   Serial.println("MQTT-Watchdog-Task gestartet.");
   rc = xTaskCreatePinnedToCore(
     MQTTstate,                 //Taskroutine
