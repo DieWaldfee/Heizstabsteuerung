@@ -2361,11 +2361,6 @@ void setup() {
     &hintegrity,                //handler
     app_cpu);                   //CPU_ID
   assert(rc == pdPASS);
-  er = esp_task_wdt_status(hintegrity);  // Check, ob der Task schon überwacht wird
-  if (er == ESP_ERR_NOT_FOUND) {
-    er = esp_task_wdt_add(hintegrity);   // Task zur Überwachung hinzugefügt  
-    assert(er == ESP_OK); 
-  }
   Serial.println("Stromstatusintegrität gestartet.");
   rc = xTaskCreatePinnedToCore(
     getTempFromSensor,         //Taskroutine
@@ -2376,11 +2371,6 @@ void setup() {
     &htempSensor,              //handler
     app_cpu);                  //CPU_ID
   assert(rc == pdPASS);
-  er = esp_task_wdt_status(htempSensor);  // Check, ob der Task schon überwacht wird
-  if (er == ESP_ERR_NOT_FOUND) {
-    er = esp_task_wdt_add(htempSensor);   // Task zur Überwachung hinzugefügt  
-    assert(er == ESP_OK); 
-  }
   Serial.println("TempSensor-Task gestartet.");
   rc = xTaskCreatePinnedToCore(
     getAmpFromSensor,          //Taskroutine
@@ -2391,11 +2381,6 @@ void setup() {
     &hampSensor,               //handler
     app_cpu);                  //CPU_ID
   assert(rc == pdPASS);
-  er = esp_task_wdt_status(hampSensor);  // Check, ob der Task schon überwacht wird
-  if (er == ESP_ERR_NOT_FOUND) {
-    er = esp_task_wdt_add(hampSensor);   // Task zur Überwachung hinzugefügt  
-    assert(er == ESP_OK); 
-  }
   Serial.println("AmpSensor-Task gestartet.");
   rc = xTaskCreatePinnedToCore(
     MQTTwatchdog,              //Taskroutine
@@ -2406,11 +2391,6 @@ void setup() {
     &hMQTTwatchdog,            //handler
     app_cpu);                  //CPU_ID
   assert(rc == pdPASS);
-  er = esp_task_wdt_status(hMQTTwatchdog);  // Check, ob der Task schon überwacht wird
-  if (er == ESP_ERR_NOT_FOUND) {
-    er = esp_task_wdt_add(hMQTTwatchdog);   // Task zur Überwachung hinzugefügt  
-    assert(er == ESP_OK); 
-  }
   Serial.println("MQTT-Watchdog-Task gestartet.");
   rc = xTaskCreatePinnedToCore(
     MQTTstate,                 //Taskroutine
