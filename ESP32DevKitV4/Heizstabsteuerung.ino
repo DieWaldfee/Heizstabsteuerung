@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <PubSubClient.h>
+#include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include <EmonLib.h>                   // Auswertung der SCT013-Sensoren
 #include <esp_task_wdt.h>
@@ -68,6 +69,9 @@ TickType_t lastSwitch = 0;            // Zeitpunkt des letzten Schaltvorgangs - 
 #define LCDADRESS 0x27
 #define LCDCOLUMNS 16
 #define LCDROWS 2
+#define SDA_PIN 21
+#define SCL_PIN 22
+
 // LCD Initialisieren
 LiquidCrystal_I2C lcd(LCDADRESS, LCDCOLUMNS, LCDROWS);  
 //Definition Sonderzeichen für Display
@@ -2230,6 +2234,10 @@ void setup() {
   pinMode(LED_OK, OUTPUT);
   digitalWrite(LED_OK, HIGH);
   //LCD Info
+  // Initialisiere den I2C-Bus mit definierten SDA und SCL Pins
+  Wire.begin(SDA_PIN, SCL_PIN);
+  // Setze die Taktfrequenz auf 100kHz (Standard ist 400kHz für den ESP32)
+  Wire.setClock(10000);        // 10kHz I2C-Takt
   // Initialisiere LCD:
   lcd.init();
   lcd.backlight();
