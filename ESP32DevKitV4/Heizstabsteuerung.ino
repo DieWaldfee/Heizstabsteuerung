@@ -59,6 +59,9 @@ int phasen1limit = 15;                // Verbrauchslimit Phase 1 - bei Überschr
 int phasen2limit = 15;                // Verbrauchslimit Phase 1 - bei Überschreitung wird der Indikator phasen1error gesetzt und zwangsabgeschalten
 int phasen3limit = 15;                // Verbrauchslimit Phase 1 - bei Überschreitung wird der Indikator phasen1error gesetzt und zwangsabgeschalten
 int phaseTimeCheck = 2000;            // prüfe nach 2000 Ticks = 2sec, ob der Schaltzustand der Phase eingestellt wurde
+#define INTEGRETY_INTERVAL 5000       // Interval, in dem die Integrität geprüft wird. 5.000 Ticks = 5s
+TickType_t lastSwitch = 0;            // Zeitpunkt des letzten Schaltvorgangs - bei Überlauf der TickTime besteht akzeptierte potentielle Pause der Integritätsprüfung
+#define INTEGRETY_DELAY 2000          // frühester Zeitpunkt für eine Integritätsprüfung nach einem Schaltvorgang: 2000 Ticks = 2s
 
 //Verbindung zum Display via i2c (Standard-Adresse 0x27)
 // Anzahl der Zeilen und Spalten setzen
@@ -153,7 +156,9 @@ int volatile tempTSensorFail = 0; //Fehlercounter zur Temperaturmessung - Resili
 int maxTSensorFail = 3;           //maximal zulässige, hinereinander folgende Sensorfehler - danach panicStop
 float DS18B20_minValue = -55.0;   //unterster Messwert im Messbereich [°C]
 float DS18B20_maxValue = 125.0;   //unterster Messwert im Messbereich [°C]
- 
+#define DS18B20_RESOLUTION 10     // 9bit: +-0.5°C @ 93.75 ms; 10bit: +-0.25°C @ 187.5 ms; 11bit: +-0.125°C @ 375 ms; 12bit: +-0.0625°C @ 750 ms
+#define DS18B20_DELAY 380         // Wartezeit nach angetriggerter Messung [ms]
+
 //Initialisiere OneWire und Thermosensor(en)
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature myDS18B20(&oneWire);
@@ -279,12 +284,16 @@ void switchPhase(int phase, int mode = 0) {
         if ((mode == 1) && (phase1error == 0)) {
           digitalWrite(PHASE1, LOW);
           phase1on = 1;
+          checkError = 0;           //mögliche Integritätsfehler werden durch Schaltvorgang obsolet
+          lastSwitch = xTaskGetTickCount();
           queuePhaseCheck(1,1);
           if (debug) Serial.println("Schaltzustand der Phasen L1: eingeschaltet.");
         } else {
           if (phase1error != 0) if (debug) Serial.println("Phase 1 weist einen Fehler auf -> aktuell keine Phasenschaltung möglich!");
           digitalWrite(PHASE1, HIGH);
           phase1on = 0;
+          checkError = 0;           //mögliche Integritätsfehler werden durch Schaltvorgang obsolet
+          lastSwitch = xTaskGetTickCount();
           queuePhaseCheck(1,0);
           if (debug) Serial.println("Schaltzustand der Phasen L1: ausgeschaltet.");
         }
@@ -293,12 +302,16 @@ void switchPhase(int phase, int mode = 0) {
         if ((mode == 1) && (phase2error == 0)) {
           digitalWrite(PHASE2, LOW);
           phase2on = 1;
+          checkError = 0;           //mögliche Integritätsfehler werden durch Schaltvorgang obsolet
+          lastSwitch = xTaskGetTickCount();
           queuePhaseCheck(2,1);
           if (debug) Serial.println("Schaltzustand der Phasen L2: eingeschaltet.");
         } else {
           if (phase2error != 0) if (debug) Serial.println("Phase 2 weist einen Fehler auf -> aktuell keine Phasenschaltung möglich!");
           digitalWrite(PHASE2, HIGH);
           phase2on = 0;
+          checkError = 0;           //mögliche Integritätsfehler werden durch Schaltvorgang obsolet
+          lastSwitch = xTaskGetTickCount();
           queuePhaseCheck(2,0);
           if (debug) Serial.println("Schaltzustand der Phasen L2: ausgeschaltet.");
         }
@@ -307,16 +320,21 @@ void switchPhase(int phase, int mode = 0) {
         if ((mode == 1) && (phase3error == 0)) {
           digitalWrite(PHASE3, LOW);
           phase3on = 1;
+          checkError = 0;           //mögliche Integritätsfehler werden durch Schaltvorgang obsolet
+          lastSwitch = xTaskGetTickCount();
           queuePhaseCheck(3,1);
           if (debug) Serial.println("Schaltzustand der Phasen L3: eingeschaltet.");
         } else {
           if (phase3error != 0) if (debug) Serial.println("Phase 3 weist einen Fehler auf -> aktuell keine Phasenschaltung möglich!");
           digitalWrite(PHASE3, HIGH);
           phase3on = 0;
+          checkError = 0;           //mögliche Integritätsfehler werden durch Schaltvorgang obsolet
+          lastSwitch = xTaskGetTickCount();
           queuePhaseCheck(3,0);
           if (debug) Serial.println("Schaltzustand der Phasen L3: ausgeschaltet.");
         }
       }
+      if (debug) Serial.println("SwitchTime Phase: " + String(lastSwitch));
     rc = xSemaphoreGive(mutexAmp);
     assert(rc == pdPASS);
   } else {
@@ -1530,6 +1548,7 @@ static void integrityCheck (void *args){
   int err;
   int errLast;
   TickType_t ticktime;
+  TickType_t lastPhaseSwitch;;
 
   //ticktime initialisieren
   ticktime = xTaskGetTickCount();
@@ -1545,58 +1564,76 @@ static void integrityCheck (void *args){
     if (debug > 1) Serial.print("TickTime: ");
     if (debug > 1) Serial.print(ticktime);
     if (debug > 1) Serial.println(" | IntegrityCheck-Task prüft die Konsistenz der Daten");
-    while (uxQueueMessagesWaiting (free1Queue) + uxQueueMessagesWaiting (free2Queue) + uxQueueMessagesWaiting (free3Queue) != 0) {
-      // die Schleife wird erst überwunden, wenn die drei Queues leer sind und damit alle Schaltvorgänge abgeschlossen und geprüft sind.
-      // größerer Zeitverzug nur bei vielen, schnellen Schaltungen zu erwarten.
-      // taskYIELD(); // taskYIELD() könnte eine Schleife erzeugen, aus der ein ESP32 nicht entrinnt.
-      if (debug > 1) Serial.println("Innere Schleife Integrety - noch keine Freigabe durch Schaltvorgang");
-      vTaskDelay(1);  // 1ms Pause, und dann neuer Versuch, bis die Queues frei sind
-    }
-    if (debug > 1) Serial.println("Integrety - Freigabe durch Schaltvorgang erfolgt");
+
     rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
     assert(rc == pdPASS);
-      a1 = amp1;
-      a2 = amp2;
-      a3 = amp3;
-      p1on = phase1on;
-      p2on = phase2on;
-      p3on = phase3on;
-      errLast = checkError;
+      lastPhaseSwitch = lastSwitch;
     rc = xSemaphoreGive(mutexAmp);
     assert(rc == pdPASS);
 
-    if (p1on == 1) {
-      //Schaltzustand ein
-       if (a1 <= ZEROHYST) err = 1;
-    } else {
-      //Schaltzustand aus
-       if (a1 > ZEROHYST) err = 1;
-    }
-    if (p2on == 1) {
-      //Schaltzustand ein
-       if (a2 <= ZEROHYST) err = 1;
-    } else {
-      //Schaltzustand aus
-       if (a2 > ZEROHYST) err = 1;
-    }
-    if (p3on == 1) {
-      //Schaltzustand ein
-       if (a3 <= ZEROHYST) err = 1;
-    } else {
-      //Schaltzustand aus
-       if (a3 > ZEROHYST) err = 1;
-    }
-    if (a1 < (float)-ZEROHYST) err = 1;
-    if (a2 < (float)-ZEROHYST) err = 1;
-    if (a3 < (float)-ZEROHYST) err = 1;
-    if (errLast == 1) {
-      //letzte Sekunde lag noch ein Fehler vor
-      if (err == 1) {
-        //Konsistenzfehler -> Notabschaltung
-        lastError = "Integritätsfehler - Schaltzustand und Phasenströme passen nicht zueinander. A1: " + String(a1);
-        lastError = lastError + "A; P1on: " + String(p1on) + "; A2: " + String(a2) + "A; P2on: " + String(p2on) + "; A3: " + String(a3) + "A; P3on: " + String(p3on) + ".";
-        panicStop();
+    //prüfe, ob die Zeit nach der letzten Phasenschaltung schon abgelaufen ist. Falls nicht wird die Integritätsprüfung ausgesetzt 
+    if (lastPhaseSwitch + INTEGRETY_DELAY < xTaskGetTickCount()) {
+      //die letzte Schaltung ist ausreichend lange her
+      while (uxQueueMessagesWaiting (free1Queue) + uxQueueMessagesWaiting (free2Queue) + uxQueueMessagesWaiting (free3Queue) != 0) {
+        // die Schleife wird erst überwunden, wenn die drei Queues leer sind und damit alle Schaltvorgänge abgeschlossen und geprüft sind.
+        // größerer Zeitverzug nur bei vielen, schnellen Schaltungen zu erwarten.
+        // taskYIELD(); // taskYIELD() könnte eine Schleife erzeugen, aus der ein ESP32 nicht entrinnt.
+        if (debug > 1) Serial.println("Innere Schleife Integrety - noch keine Freigabe durch Schaltvorgang");
+        vTaskDelay(1);  // 1ms Pause, und dann neuer Versuch, bis die Queues frei sind
+      }
+      if (debug > 1) Serial.println("Integrety - Freigabe durch Schaltvorgang erfolgt");
+      rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
+      assert(rc == pdPASS);
+        a1 = amp1;
+        a2 = amp2;
+        a3 = amp3;
+        p1on = phase1on;
+        p2on = phase2on;
+        p3on = phase3on;
+        errLast = checkError;
+      rc = xSemaphoreGive(mutexAmp);
+      assert(rc == pdPASS);
+
+      if (p1on == 1) {
+        //Schaltzustand ein
+        if (a1 <= ZEROHYST) err = 1;
       } else {
+        //Schaltzustand aus
+        if (a1 > ZEROHYST) err = 1;
+      }
+      if (p2on == 1) {
+        //Schaltzustand ein
+        if (a2 <= ZEROHYST) err = 1;
+      } else {
+        //Schaltzustand aus
+        if (a2 > ZEROHYST) err = 1;
+      }
+      if (p3on == 1) {
+        //Schaltzustand ein
+        if (a3 <= ZEROHYST) err = 1;
+      } else {
+        //Schaltzustand aus
+        if (a3 > ZEROHYST) err = 1;
+      }
+      if (a1 < (float)-ZEROHYST) err = 1;
+      if (a2 < (float)-ZEROHYST) err = 1;
+      if (a3 < (float)-ZEROHYST) err = 1;
+      if (errLast == 1) {
+        //letzter Durchflauf lag noch ein Fehler vor
+        if (err == 1) {
+          //Konsistenzfehler -> Notabschaltung
+          lastError = "Integritätsfehler - Schaltzustand und Phasenströme passen nicht zueinander. A1: " + String(a1);
+          lastError = lastError + "A; P1on: " + String(p1on) + "; A2: " + String(a2) + "A; P2on: " + String(p2on) + "; A3: " + String(a3) + "A; P3on: " + String(p3on) + ".";
+          panicStop();
+        } else {
+          rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
+          assert(rc == pdPASS);
+            checkError = err;
+          rc = xSemaphoreGive(mutexAmp);
+          assert(rc == pdPASS);
+        }
+      } else {
+        //keine akute Disonanz festgestellt
         rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
         assert(rc == pdPASS);
           checkError = err;
@@ -1604,17 +1641,11 @@ static void integrityCheck (void *args){
         assert(rc == pdPASS);
       }
     } else {
-      //keine akute Disonanz festgestellt
-      rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
-      assert(rc == pdPASS);
-        checkError = err;
-      rc = xSemaphoreGive(mutexAmp);
-      assert(rc == pdPASS);
+      if (debug) Serial.println("Integrety-Prüfung ausgesetzt - zu kurz hinter einer Phasenschaltung");
     }
-
     if (debug > 1) Serial.println("Integrety - fertig druchlaufen");
-    // Task schlafen legen - restart alle 60s = 60*1000 ticks = 60000 ticks
-    vTaskDelayUntil(&ticktime, 60000);
+    // Task schlafen legen - restart alle INTEGRETY_INTERVAL [ticks]
+    vTaskDelayUntil(&ticktime, INTEGRETY_INTERVAL);
   }
 }
 
@@ -1706,7 +1737,8 @@ void readDS18B20() {
   bool res1 = false;
   bool res2 = false;
   if (debug > 2) Serial.print("Anfrage der Temperatursensoren... ");
-  myDS18B20.requestTemperatures();  //Anfrage zum Auslesen der Temperaturen
+  myDS18B20.requestTemperatures();                    //Anfrage zum Auslesen der Temperaturen
+  delay(DS18B20_DELAY);                               // Wartezeit bis Messung abgeschlossen ist
   if (debug > 2) Serial.println("fertig");
   for (int i = 0; i < DS18B20_Count; i++) {
     myDS18B20.getAddress(myDS18B20Address,i);
@@ -1718,9 +1750,22 @@ void readDS18B20() {
       Adresse += String(myDS18B20Address[j], HEX);
       if (j < 7) Adresse += ", ";
     }
-    if (Adresse == Adresse1) tMax = myDS18B20.getTempCByIndex(i);
-    if (Adresse == Adresse2) t1 = myDS18B20.getTempCByIndex(i);
-    if (Adresse == Adresse3) t2 = myDS18B20.getTempCByIndex(i);
+    if (Adresse == Adresse1) {
+      tMax = myDS18B20.getTempCByIndex(i);
+    } else if (Adresse == Adresse2) {
+      t1 = myDS18B20.getTempCByIndex(i);
+    } else if (Adresse == Adresse3) {
+      t2 = myDS18B20.getTempCByIndex(i);
+    } else {
+      mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
+      mqttTopic += "lastError";
+      mqttPayload = "nicht spezifizierter Temperatursensor gefunden! Reboot!";
+      mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+      if (debug > 2) Serial.print("LastError: ");
+      if (debug > 2) Serial.println(mqttPayload);
+      delay(500);
+      ESP.restart();
+    }
   }
   //Plausibilitätscheck
   if (checkDS18B20Value(t1)) {
@@ -2307,6 +2352,8 @@ void setup() {
       delay(250);
     }
   }
+  //Setzen der Auflösungen
+  myDS18B20.setResolution(DS18B20_RESOLUTION);                  // globale Auflösung gesetzt
   Serial.print("Globale Aufloesung (Bit):        ");
   Serial.println(myDS18B20.getResolution());
   //Display im OperatingMode
