@@ -203,6 +203,7 @@ static QueueHandle_t free3Queue;       //Queue-Handler - wenn leer, dann Integri
 //erforderliche Funtions-Prototypen
 void panicStop(void);
 float getAmp_SCT013(int);
+void thermalStop (void);
 
 //-------------------------------------
 //Wirft den gewünschten Phasencheck in die passende Queue
@@ -1586,50 +1587,66 @@ static void integrityCheck (void *args){
         vTaskDelay(1);  // 1ms Pause, und dann neuer Versuch, bis die Queues frei sind
       }
       if (debug > 1) Serial.println("Integrety - Freigabe durch Schaltvorgang erfolgt");
-      rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
-      assert(rc == pdPASS);
-        a1 = amp1;
-        a2 = amp2;
-        a3 = amp3;
-        p1on = phase1on;
-        p2on = phase2on;
-        p3on = phase3on;
-        errLast = checkError;
-      rc = xSemaphoreGive(mutexAmp);
-      assert(rc == pdPASS);
+      //prüfe erneut, ob die Zeit nach der letzten Phasenschaltung schon abgelaufen ist. Falls nicht wird die Integritätsprüfung ausgesetzt
+      //das kann bei schnellen Schaltungen passieren 
+      if (lastPhaseSwitch + INTEGRETY_DELAY < xTaskGetTickCount()) {
+        //aktueller Stromwerte aus Sensor auslesen und aktueller Schaltzustand auslesen
+        rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
+        assert(rc == pdPASS);
+          rc = xSemaphoreTake(mutexAmpSensor, portMAX_DELAY);
+          assert(rc == pdPASS);
+            a1 = getAmp_SCT013(1);
+            a2 = getAmp_SCT013(2);
+            a3 = getAmp_SCT013(3);
+            p1on = phase1on;
+            p2on = phase2on;
+            p3on = phase3on;
+            errLast = checkError;
+          rc = xSemaphoreGive(mutexAmpSensor);
+          assert(rc == pdPASS);
+        rc = xSemaphoreGive(mutexAmp);
+        assert(rc == pdPASS);
 
-      if (p1on == 1) {
-        //Schaltzustand ein
-        if (a1 <= ZEROHYST) err = 1;
-      } else {
-        //Schaltzustand aus
-        if (a1 > ZEROHYST) err = 1;
-      }
-      if (p2on == 1) {
-        //Schaltzustand ein
-        if (a2 <= ZEROHYST) err = 1;
-      } else {
-        //Schaltzustand aus
-        if (a2 > ZEROHYST) err = 1;
-      }
-      if (p3on == 1) {
-        //Schaltzustand ein
-        if (a3 <= ZEROHYST) err = 1;
-      } else {
-        //Schaltzustand aus
-        if (a3 > ZEROHYST) err = 1;
-      }
-      if (a1 < (float)-ZEROHYST) err = 1;
-      if (a2 < (float)-ZEROHYST) err = 1;
-      if (a3 < (float)-ZEROHYST) err = 1;
-      if (errLast == 1) {
-        //letzter Durchflauf lag noch ein Fehler vor
-        if (err == 1) {
-          //Konsistenzfehler -> Notabschaltung
-          lastError = "Integritätsfehler - Schaltzustand und Phasenströme passen nicht zueinander. A1: " + String(a1);
-          lastError = lastError + "A; P1on: " + String(p1on) + "; A2: " + String(a2) + "A; P2on: " + String(p2on) + "; A3: " + String(a3) + "A; P3on: " + String(p3on) + ".";
-          panicStop();
+        if (p1on == 1) {
+          //Schaltzustand ein
+          if (a1 <= ZEROHYST) err = 1;
         } else {
+          //Schaltzustand aus
+          if (a1 > ZEROHYST) err = 1;
+        }
+        if (p2on == 1) {
+          //Schaltzustand ein
+          if (a2 <= ZEROHYST) err = 1;
+        } else {
+          //Schaltzustand aus
+          if (a2 > ZEROHYST) err = 1;
+        }
+        if (p3on == 1) {
+          //Schaltzustand ein
+          if (a3 <= ZEROHYST) err = 1;
+        } else {
+          //Schaltzustand aus
+          if (a3 > ZEROHYST) err = 1;
+        }
+        if (a1 < (float)-ZEROHYST) err = 1;
+        if (a2 < (float)-ZEROHYST) err = 1;
+        if (a3 < (float)-ZEROHYST) err = 1;
+        if (errLast == 1) {
+          //letzter Durchflauf lag noch ein Fehler vor
+          if (err == 1) {
+            //Konsistenzfehler -> Notabschaltung
+            lastError = "Integritätsfehler - Schaltzustand und Phasenströme passen nicht zueinander. A1: " + String(a1);
+            lastError = lastError + "A; P1on: " + String(p1on) + "; A2: " + String(a2) + "A; P2on: " + String(p2on) + "; A3: " + String(a3) + "A; P3on: " + String(p3on) + ".";
+            panicStop();
+          } else {
+            rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
+            assert(rc == pdPASS);
+              checkError = err;
+            rc = xSemaphoreGive(mutexAmp);
+            assert(rc == pdPASS);
+          }
+        } else {
+          //keine akute Disonanz festgestellt
           rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
           assert(rc == pdPASS);
             checkError = err;
@@ -1637,15 +1654,18 @@ static void integrityCheck (void *args){
           assert(rc == pdPASS);
         }
       } else {
-        //keine akute Disonanz festgestellt
-        rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
-        assert(rc == pdPASS);
-          checkError = err;
-        rc = xSemaphoreGive(mutexAmp);
-        assert(rc == pdPASS);
+        if (debug) Serial.println("Integrety-Prüfung ausgesetzt - Queues zu kurz hinter einer Phasenschaltung entleert");
       }
     } else {
       if (debug) Serial.println("Integrety-Prüfung ausgesetzt - zu kurz hinter einer Phasenschaltung");
+      if (lastPhaseSwitch > xTaskGetTickCount()) {
+        //tritt nur bei einem Überlauf ein. Dann Reset von lastSwitch. akzeptierte Integritätsaussetzer zur Behandlung des Überlaufs
+        rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
+        assert(rc == pdPASS);
+          lastSwitch = xTaskGetTickCount();
+        rc = xSemaphoreGive(mutexAmp);
+        assert(rc == pdPASS);
+      }
     }
     if (debug > 1) Serial.println("Integrety - fertig druchlaufen");
     // Task schlafen legen - restart alle INTEGRETY_INTERVAL [ticks]
@@ -1815,6 +1835,9 @@ void readDS18B20() {
   }
   if (tempTSensorFail > maxTSensorFail) {
     Serial.println("zu viele Fehler (out of range) beim Auslesen der DS18B20! Reboot!!");
+    digitalWrite(PHASE1, HIGH);
+    digitalWrite(PHASE2, HIGH);
+    digitalWrite(PHASE3, HIGH);
     ESP.restart();
   }
 }
