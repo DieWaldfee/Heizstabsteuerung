@@ -1,0 +1,207 @@
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="create" id="vmQ_.na}@8@$xKI_*mo5" x="213" y="338">
+    <field name="NAME">Heizung_Schaltstufe_1</field>
+    <value name="VALUE">
+      <block type="logic_boolean" id="IA%Aqb~8`TGRlX=Kz~e7">
+        <field name="BOOL">FALSE</field>
+      </block>
+    </value>
+    <value name="COMMON">
+      <block type="text" id="GW{KS(qm_B5fYmzr{s4J">
+        <field name="TEXT">{"type": "boolean", "role": "state","read": true, "write": true}</field>
+      </block>
+    </value>
+    <next>
+      <block type="create" id="U,YV|,j`}VS;+9P`]0Ig">
+        <field name="NAME">Heizung_Schaltstufe_2</field>
+        <value name="VALUE">
+          <block type="logic_boolean" id="qe[q;!wm[[tI)Y/L#I_{">
+            <field name="BOOL">FALSE</field>
+          </block>
+        </value>
+        <value name="COMMON">
+          <block type="text" id="r({TRHlQ7.CM|Z9ogB*W">
+            <field name="TEXT">{"type": "boolean", "role": "state","read": true, "write": true}</field>
+          </block>
+        </value>
+        <next>
+          <block type="create" id="LW`oCh-rc;1Wg.{0W$[Y">
+            <field name="NAME">Heizung_Thermoabschaltung</field>
+            <value name="VALUE">
+              <block type="logic_boolean" id="aLTkgmf^m:/N:rXRw#^^">
+                <field name="BOOL">FALSE</field>
+              </block>
+            </value>
+            <value name="COMMON">
+              <block type="text" id="WHRp.]AriK]TJYsfFb!6">
+                <field name="TEXT">{"type": "boolean", "role": "state","read": true, "write": true}</field>
+              </block>
+            </value>
+            <next>
+              <block type="comment" id="p~mJ`GFdxO=A~=fW^BE_">
+                <field name="COMMENT">Notaus-Steuerung</field>
+                <next>
+                  <block type="on" id="hcT;x`EWMq?PP=KV#Ics">
+                    <field name="OID">javascript.0.Heizung_Notabschaltung</field>
+                    <field name="CONDITION">ne</field>
+                    <field name="ACK_CONDITION"></field>
+                    <statement name="STATEMENT">
+                      <block type="controls_if" id="voG_Wv}Ol*ylQjfHWoc4">
+                        <mutation else="1"></mutation>
+                        <value name="IF0">
+                          <block type="on_source" id="ozbb]oWh:fNnrP({j.1X">
+                            <field name="ATTR">state.val</field>
+                          </block>
+                        </value>
+                        <statement name="DO0">
+                          <block type="update" id="eh(=8(OX7tC2?(*yrSiE">
+                            <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
+                            <field name="OID">javascript.0.Heizung_Schaltstufe_1</field>
+                            <field name="WITH_DELAY">FALSE</field>
+                            <value name="VALUE">
+                              <block type="logic_boolean" id="@UIeUmiS(CA,%~YMmL|/">
+                                <field name="BOOL">FALSE</field>
+                              </block>
+                            </value>
+                            <next>
+                              <block type="update" id="pl?;0I`E7FKP!8C(U;/=">
+                                <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
+                                <field name="OID">javascript.0.Heizung_Schaltstufe_2</field>
+                                <field name="WITH_DELAY">FALSE</field>
+                                <value name="VALUE">
+                                  <block type="logic_boolean" id="(@K=/?sah8s?Qr2*E9=S">
+                                    <field name="BOOL">FALSE</field>
+                                  </block>
+                                </value>
+                                <next>
+                                  <block type="control" id="ydvlw1=(#9.vCFmS6fMT">
+                                    <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
+                                    <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_Heizstabsteuerung.command</field>
+                                    <field name="WITH_DELAY">FALSE</field>
+                                    <value name="VALUE">
+                                      <block type="text" id="Nv8UbNU}|}Gez]Y$.W9U">
+                                        <field name="TEXT">L123 aus</field>
+                                      </block>
+                                    </value>
+                                    <next>
+                                      <block type="timeouts_wait" id="_`7K$~SW|EqiSEv=wXPH">
+                                        <field name="DELAY">2</field>
+                                        <field name="UNIT">sec</field>
+                                        <next>
+                                          <block type="control" id="u(VdSQ3ZQ%+B`k,8#,QJ">
+                                            <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
+                                            <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_Heizstabsteuerung.command</field>
+                                            <field name="WITH_DELAY">FALSE</field>
+                                            <value name="VALUE">
+                                              <block type="text" id="X|}_|)g-PJ3c9XM;3kqd">
+                                                <field name="TEXT">Test</field>
+                                              </block>
+                                            </value>
+                                            <next>
+                                              <block type="control" id="J1^*]!.^Wrv^VCz@!bRS">
+                                                <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
+                                                <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_PowerGuard.command</field>
+                                                <field name="WITH_DELAY">FALSE</field>
+                                                <value name="VALUE">
+                                                  <block type="text" id="]pBT_J9/:3Gi|O+mwM,B">
+                                                    <field name="TEXT">Test</field>
+                                                  </block>
+                                                </value>
+                                                <next>
+                                                  <block type="timeouts_wait" id="|dR]Gg4-YGs:l;R(LR6q">
+                                                    <field name="DELAY">2</field>
+                                                    <field name="UNIT">sec</field>
+                                                    <next>
+                                                      <block type="control" id="*Bi_hjVIC*2OR3tWH.Gh">
+                                                        <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
+                                                        <field name="OID">hm-rpc.0.OEQ0772728.1.STATE</field>
+                                                        <field name="WITH_DELAY">FALSE</field>
+                                                        <value name="VALUE">
+                                                          <block type="logic_boolean" id="aRS%kMfSdDf|1q:uH.nB">
+                                                            <field name="BOOL">FALSE</field>
+                                                          </block>
+                                                        </value>
+                                                        <next>
+                                                          <block type="control" id=")g(NU:|]`Y~$wZ_@X-:-">
+                                                            <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
+                                                            <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_Heizstabsteuerung.status</field>
+                                                            <field name="WITH_DELAY">FALSE</field>
+                                                            <value name="VALUE">
+                                                              <block type="logic_boolean" id="e*T.5Nq2ZA[).+*b0tvQ">
+                                                                <field name="BOOL">FALSE</field>
+                                                              </block>
+                                                            </value>
+                                                            <next>
+                                                              <block type="update" id="H2Mo~}5P*nZTIM1y=c||">
+                                                                <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
+                                                                <field name="OID">javascript.0.Heizung_Thermoabschaltung</field>
+                                                                <field name="WITH_DELAY">FALSE</field>
+                                                                <value name="VALUE">
+                                                                  <block type="logic_boolean" id="*!eiZdVDb)BI5`2M@V,+">
+                                                                    <field name="BOOL">FALSE</field>
+                                                                  </block>
+                                                                </value>
+                                                                <next>
+                                                                  <block type="debug" id="diEl6KC{MeU~WN,PC~Fn">
+                                                                    <field name="Severity">warn</field>
+                                                                    <value name="TEXT">
+                                                                      <shadow type="text" id="Hgm$d]ZGsD!(]%QC=)j4">
+                                                                        <field name="TEXT">Notaus aktiviert!</field>
+                                                                      </shadow>
+                                                                    </value>
+                                                                  </block>
+                                                                </next>
+                                                              </block>
+                                                            </next>
+                                                          </block>
+                                                        </next>
+                                                      </block>
+                                                    </next>
+                                                  </block>
+                                                </next>
+                                              </block>
+                                            </next>
+                                          </block>
+                                        </next>
+                                      </block>
+                                    </next>
+                                  </block>
+                                </next>
+                              </block>
+                            </next>
+                          </block>
+                        </statement>
+                        <statement name="ELSE">
+                          <block type="control" id="?_ZEV4C.bQ2^-EX{C$z.">
+                            <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
+                            <field name="OID">hm-rpc.0.OEQ0772728.1.STATE</field>
+                            <field name="WITH_DELAY">FALSE</field>
+                            <value name="VALUE">
+                              <block type="logic_boolean" id="KUM~*V3nuyCQ!U##Yq!d">
+                                <field name="BOOL">TRUE</field>
+                              </block>
+                            </value>
+                            <next>
+                              <block type="debug" id="3H3gZSCi$2JKV6D5eVKs">
+                                <field name="Severity">info</field>
+                                <value name="TEXT">
+                                  <shadow type="text" id="?jO9pAHz{B)3%IOdjQ_9">
+                                    <field name="TEXT">Notaus wieder aufgehoben!</field>
+                                  </shadow>
+                                </value>
+                              </block>
+                            </next>
+                          </block>
+                        </statement>
+                      </block>
+                    </statement>
+                  </block>
+                </next>
+              </block>
+            </next>
+          </block>
+        </next>
+      </block>
+    </next>
+  </block>
+</xml>
