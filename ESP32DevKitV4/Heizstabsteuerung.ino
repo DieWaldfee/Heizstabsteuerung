@@ -71,9 +71,12 @@ TickType_t lastSwitch = 0;            // Zeitpunkt des letzten Schaltvorgangs - 
 #define LCDROWS 2
 #define SDA_PIN 21
 #define SCL_PIN 22
+int volatile displayCounter = 0;      // Zähler für die Anzahl der Displayrefreshs. Dient zum zyklischen Reinitialisieren des LCD-Treibers
+#define MAX_REFRESH_LCD 10000         // Anzahl der Displayrefreshs bis das Display reinitialisiert wird.
+#define REFRESH_LCD 2000              // Interval für das DisplayUpdate: 2000 Ticks = 2s
 
 // LCD Initialisieren
-LiquidCrystal_I2C lcd(LCDADRESS, LCDCOLUMNS, LCDROWS);  
+LiquidCrystal_I2C lcd(LCDADRESS, LCDCOLUMNS, LCDROWS);
 //Definition Sonderzeichen für Display
 byte okCheck[8] = {
   0b00000,
@@ -2001,6 +2004,10 @@ void panicStop() {
   if (debug) Serial.println("Notabschaltung durchgeführt - Phasen 1-3 abgeschalten!");
   digitalWrite(LED_OK, LOW);
   digitalWrite(LED_ERROR, HIGH);
+  // diese Zeilen erst aktivieren, wenn die Hardware stabil läuft! der Reset führt sonst ggf. zum zyklischen Fehler!
+  delay(100);
+  Serial.println("Reboot durch PanicStop!");
+  ESP.restart();
 }
 //Termale abschaltung
 void thermalStop() {
@@ -2116,10 +2123,10 @@ void printPhase(float a1, int p1on, float a2, int p2on, float a3, int p3on) {
   // "-" = Phase soll aus sein
   // "X" = Fehler! Messung und gewuenschte Schaltung differieren!
   //Phase 1 Schaltzustand und Strommessung
-  lcd.setCursor(2, 0);
+  lcd.setCursor(0, 0);
+  lcd.print("L1");
   if (p1on == 0) lcd.print("-");
   if (p1on == 1) lcd.print("*");
-  lcd.setCursor(3, 0);
   if ((a1 > ZEROHYST) || (a1 < -ZEROHYST)) {
     // amp > 0A => "eingeschalten"
     if (p1on == 0) lcd.print("X");
@@ -2131,10 +2138,9 @@ void printPhase(float a1, int p1on, float a2, int p2on, float a3, int p3on) {
     if (p1on == 1) lcd.print("X");
   } 
   //Phase 2 Schaltzustand und Strommessung
-  lcd.setCursor(7, 0);
+  lcd.print(" L2");
   if (p2on == 0) lcd.print("-");
   if (p2on == 1) lcd.print("*");
-  lcd.setCursor(8, 0);
   if ((a2 > ZEROHYST) || (a2 < -ZEROHYST)) {
     // amp > 0A => "eingeschalten"
     if (p2on == 0) lcd.print("X");
@@ -2146,10 +2152,9 @@ void printPhase(float a1, int p1on, float a2, int p2on, float a3, int p3on) {
     if (p2on == 1) lcd.print("X");
   } 
   //Phase 3 Schaltzustand und Strommessung
-  lcd.setCursor(12, 0);
+  lcd.print(" L3");
   if (p3on == 0) lcd.print("-");
   if (p3on == 1) lcd.print("*");
-  lcd.setCursor(13, 0);
   if ((a3 > ZEROHYST) || (a3 < -ZEROHYST)) {
     // amp > 0A => "eingeschalten"
     if (p3on == 0) lcd.print("X");
@@ -2194,6 +2199,20 @@ static void displayUpdate (void *args){
   ticktime = xTaskGetTickCount();
 
   for (;;){                        // Dauerschleife des Tasks
+    // Zähler des Display-Update setzen
+    displayCounter++;
+    if (displayCounter > MAX_REFRESH_LCD) {     // Reinitialisierung des Displays nach MAX_REFRESH_LCD Durchläufen
+      lcd.clear();
+      delay(50);
+      lcd.begin(LCDCOLUMNS, LCDROWS);
+      lcd.backlight();
+      displayCounter = 0;
+      lcd.print("L1-- L2-- L3-- -");
+      lcd.setCursor(0, 1);
+      lcd.print(" 0,0  0,0  0,0 C");
+      lcd.setCursor(14, 1);
+      lcd.write((byte)1);  // Gebe customChar 1 = grad aus
+    }
     //Lesen der Temperaturen
     if (debug > 1) Serial.print("TickTime: ");
     if (debug > 1) Serial.print(ticktime);
@@ -2225,9 +2244,9 @@ static void displayUpdate (void *args){
     rc = xSemaphoreTake(mutexI2C, portMAX_DELAY);
     assert(rc == pdPASS);
     printTemp(tMax, tTop1, tTop2);
+    printPhase(a1, p1on, a2, p2on, a3, p3on);
     printMQTTok();
     printFan(fOn);
-    printPhase(a1, p1on, a2, p2on, a3, p3on);
     rc = xSemaphoreGive(mutexI2C);
     assert(rc == pdPASS);
 
