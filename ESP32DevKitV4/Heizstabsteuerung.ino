@@ -72,8 +72,8 @@ TickType_t lastSwitch = 0;            // Zeitpunkt des letzten Schaltvorgangs - 
 #define SDA_PIN 21
 #define SCL_PIN 22
 int volatile displayCounter = 0;      // Zähler für die Anzahl der Displayrefreshs. Dient zum zyklischen Reinitialisieren des LCD-Treibers
-#define MAX_REFRESH_LCD 10000         // Anzahl der Displayrefreshs bis das Display reinitialisiert wird.
-#define REFRESH_LCD 2000              // Interval für das DisplayUpdate: 2000 Ticks = 2s
+#define MAX_REFRESH_LCD 100           // Anzahl der Displayrefreshs bis das Display reinitialisiert wird.
+#define REFRESH_LCD 2000              // Interval für das DisplayUpdate-Task: 2000 Ticks = 2s
 
 // LCD Initialisieren
 LiquidCrystal_I2C lcd(LCDADRESS, LCDCOLUMNS, LCDROWS);
@@ -143,7 +143,7 @@ PubSubClient mqttClient(myWiFiClient);
 
 // Anzahl der angeschlossenen DS18B20 - Sensoren
 int DS18B20_Count = 0; //Anzahl der erkannten DS18B20-Sensoren
-//Beispiel Sensorsetting (Ausgabe im Debugmodus (debug = 1) auf dem serial Monitor)
+//Beispiel Sensorsetting (Ausgabe im Debugmodus (debug = 1) auf dem serial Monitor):
   //DS18B20[0]: 23.69 *C (0x28, 0x88, 0x9d, 0x57, 0x04, 0xe1, 0x3c, 0x62) => Slot 2 
   //DS18B20[1]: 23.75 *C (0x28, 0xd2, 0x57, 0x57, 0x04, 0xe1, 0x3c, 0x1c) => Slot 1
   //DS18B20[2]: 23.19 *C (0x28, 0xba, 0x9b, 0x57, 0x04, 0xe1, 0x3c, 0x7d) => Slot 3
@@ -2095,6 +2095,8 @@ void printTemp(float t1, float t2, float t3) {
   //Ausgabe auf das Display
   lcd.setCursor(0, 1);
   lcd.print(tempLine);
+  lcd.write((byte)1); // Gebe customChar 1 = Grad aus
+  lcd.print("C");
   if (debug > 2) Serial.print("Ausgelesene Temperaturen: ");
   if (debug > 2) Serial.print(tempLine);  
   if (debug > 2) Serial.println(" °C");  
@@ -2203,15 +2205,19 @@ static void displayUpdate (void *args){
     displayCounter++;
     if (displayCounter > MAX_REFRESH_LCD) {     // Reinitialisierung des Displays nach MAX_REFRESH_LCD Durchläufen
       lcd.clear();
-      delay(50);
       lcd.begin(LCDCOLUMNS, LCDROWS);
       lcd.backlight();
-      displayCounter = 0;
+      // redefine der Sonderzeichen
+      lcd.createChar(0, okCheck);  // Sonderzeichen 0 einführen
+      lcd.createChar(1, grad);     // Sonderzeichen 1 einführen
+      lcd.createChar(2, connIcon); // Sonderzeichen 2 einführen
+      lcd.createChar(3, fanIcon);  // Sonderzeichen 3 einführen
       lcd.print("L1-- L2-- L3-- -");
       lcd.setCursor(0, 1);
-      lcd.print(" 0,0  0,0  0,0 C");
-      lcd.setCursor(14, 1);
+      lcd.print(" 0,0  0,0  0,0");
       lcd.write((byte)1);  // Gebe customChar 1 = grad aus
+      lcd.print("C");
+      displayCounter = 0;
     }
     //Lesen der Temperaturen
     if (debug > 1) Serial.print("TickTime: ");
@@ -2413,10 +2419,9 @@ void setup() {
   lcd.setCursor(0, 0);
   lcd.print("L1-- L2-- L3-- -");
   lcd.setCursor(0, 1);
-  lcd.print(" 0,0  0,0  0,0 C");
-  lcd.setCursor(14, 1);
+  lcd.print(" 0,0  0,0  0,0");
   lcd.write((byte)1);  // Gebe customChar 1 = grad aus
-  //lcd.write((byte)0);  // Gebe customChar 0 = okCheck aus
+  lcd.print("C");
   //Mutex-Initialisierung
   mutexTemp = xSemaphoreCreateMutex();
   assert(mutexTemp);
