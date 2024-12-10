@@ -215,136 +215,175 @@
                           </block>
                         </statement>
                         <next>
-                          <block type="on" id="Z(;MIr}i$VTOe!0Czr[/">
-                            <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_Heizstabsteuerung.ac</field>
-                            <field name="CONDITION">ne</field>
-                            <field name="ACK_CONDITION"></field>
-                            <statement name="STATEMENT">
-                              <block type="controls_if" id="7u@;qq}u?*)Z@RLJ;asD">
-                                <value name="IF0">
-                                  <block type="logic_compare" id="V|,i[/,:.r`Jgv2/^i`D">
-                                    <field name="OP">EQ</field>
-                                    <value name="A">
-                                      <block type="get_value" id=")DfU-T=WTV()u,UsSsg-">
-                                        <field name="ATTR">val</field>
-                                        <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_Heizstabsteuerung.ac</field>
-                                      </block>
-                                    </value>
-                                    <value name="B">
-                                      <block type="text" id="n@2GObtG?o!M,Kj#9Cal">
-                                        <field name="TEXT">Start durchgeführt.</field>
-                                      </block>
-                                    </value>
-                                  </block>
-                                </value>
-                                <statement name="DO0">
-                                  <block type="telegram" id="8onx-{3U#nKTU*D:ED=6">
-                                    <field name="INSTANCE">.0</field>
-                                    <field name="LOG"></field>
-                                    <field name="SILENT">FALSE</field>
-                                    <field name="PARSEMODE">default</field>
-                                    <field name="ESCAPING">FALSE</field>
-                                    <field name="DISABLE_WEB_PAGE_PREVIEW">FALSE</field>
-                                    <value name="MESSAGE">
-                                      <shadow type="text" id="wZ0)g[USauFiNG+#G~PX">
-                                        <field name="TEXT">Reboot durchgeführt</field>
-                                      </shadow>
-                                      <block type="text" id="*n|fVj43D;6}$G}MK-Yg">
-                                        <field name="TEXT">Heizstabsteuerung: Bootvorgang erfolgreich</field>
-                                      </block>
-                                    </value>
-                                    <value name="USERNAME">
-                                      <block type="get_value" id="kBuLynM4gj~cEQMsmUcp">
-                                        <field name="ATTR">val</field>
-                                        <field name="OID">javascript.0.Telegram_Gruppe_Heizung</field>
-                                      </block>
-                                    </value>
-                                  </block>
-                                </statement>
-                              </block>
-                            </statement>
+                          <block type="comment" id="hF#eubzW@[#^T^*@Ug#?">
+                            <field name="COMMENT">Meldung nach Neustart der Heizstabsteuerung</field>
                             <next>
-                              <block type="on" id="-~SFq].*^Cz2@8bv8u%`">
-                                <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_PowerGuard.ac</field>
+                              <block type="on" id="Z(;MIr}i$VTOe!0Czr[/">
+                                <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_Heizstabsteuerung.ac</field>
                                 <field name="CONDITION">ne</field>
                                 <field name="ACK_CONDITION"></field>
                                 <statement name="STATEMENT">
-                                  <block type="debug" id="_h(EoGh7bt;?j0QiE_CS">
-                                    <field name="Severity">info</field>
-                                    <value name="TEXT">
-                                      <shadow type="text" id="t++/w$+*jlT(0piOJ@O/">
-                                        <field name="TEXT">test</field>
-                                      </shadow>
-                                      <block type="on_source" id="Jdy*mo,wVB)=.L4KzD)J">
-                                        <field name="ATTR">state.val</field>
-                                      </block>
-                                    </value>
-                                    <next>
-                                      <block type="controls_if" id="ENdWO_ujQq`3~!_e1U82">
-                                        <value name="IF0">
-                                          <block type="logic_compare" id="F%;jsoO(qw^KsfeuITWB">
-                                            <field name="OP">EQ</field>
-                                            <value name="A">
-                                              <block type="get_value" id="Ndja?YVUqb?*q6w,Tq|Q">
-                                                <field name="ATTR">val</field>
-                                                <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_PowerGuard.ac</field>
-                                              </block>
-                                            </value>
-                                            <value name="B">
-                                              <block type="text" id="m~f!*WS(a{n4vDw5NMJy">
-                                                <field name="TEXT">Start durchgeführt.</field>
-                                              </block>
-                                            </value>
+                                  <block type="controls_if" id="7u@;qq}u?*)Z@RLJ;asD">
+                                    <value name="IF0">
+                                      <block type="logic_compare" id="V|,i[/,:.r`Jgv2/^i`D">
+                                        <field name="OP">EQ</field>
+                                        <value name="A">
+                                          <block type="get_value" id=")DfU-T=WTV()u,UsSsg-">
+                                            <field name="ATTR">val</field>
+                                            <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_Heizstabsteuerung.ac</field>
                                           </block>
                                         </value>
-                                        <statement name="DO0">
-                                          <block type="telegram" id="PiWxup+LvHsctMpt?]Z5">
-                                            <field name="INSTANCE">.0</field>
-                                            <field name="LOG"></field>
-                                            <field name="SILENT">FALSE</field>
-                                            <field name="PARSEMODE">default</field>
-                                            <field name="ESCAPING">FALSE</field>
-                                            <field name="DISABLE_WEB_PAGE_PREVIEW">FALSE</field>
-                                            <value name="MESSAGE">
-                                              <shadow type="text" id="wZ0)g[USauFiNG+#G~PX">
-                                                <field name="TEXT">Reboot durchgeführt</field>
-                                              </shadow>
-                                              <block type="text" id=".V_u2k]c#rHtaHQd4jTL">
-                                                <field name="TEXT">PowerGuard: Bootvorgang erfolgreich</field>
-                                              </block>
-                                            </value>
-                                            <value name="USERNAME">
-                                              <block type="get_value" id="EgtqM!?7%cw5wg+x)W`$">
-                                                <field name="ATTR">val</field>
-                                                <field name="OID">javascript.0.Telegram_Gruppe_Heizung</field>
-                                              </block>
-                                            </value>
+                                        <value name="B">
+                                          <block type="text" id="n@2GObtG?o!M,Kj#9Cal">
+                                            <field name="TEXT">Start durchgeführt.</field>
                                           </block>
-                                        </statement>
+                                        </value>
+                                      </block>
+                                    </value>
+                                    <statement name="DO0">
+                                      <block type="telegram" id="8onx-{3U#nKTU*D:ED=6">
+                                        <field name="INSTANCE">.0</field>
+                                        <field name="LOG"></field>
+                                        <field name="SILENT">FALSE</field>
+                                        <field name="PARSEMODE">default</field>
+                                        <field name="ESCAPING">FALSE</field>
+                                        <field name="DISABLE_WEB_PAGE_PREVIEW">FALSE</field>
+                                        <value name="MESSAGE">
+                                          <shadow type="text" id="wZ0)g[USauFiNG+#G~PX">
+                                            <field name="TEXT">Reboot durchgeführt</field>
+                                          </shadow>
+                                          <block type="text" id="*n|fVj43D;6}$G}MK-Yg">
+                                            <field name="TEXT">Heizstabsteuerung: Bootvorgang erfolgreich</field>
+                                          </block>
+                                        </value>
+                                        <value name="USERNAME">
+                                          <block type="get_value" id="kBuLynM4gj~cEQMsmUcp">
+                                            <field name="ATTR">val</field>
+                                            <field name="OID">javascript.0.Telegram_Gruppe_Heizung</field>
+                                          </block>
+                                        </value>
+                                      </block>
+                                    </statement>
+                                    <next>
+                                      <block type="control" id="*I8xy+.T0Xnve2.HdK-s">
+                                        <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
+                                        <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_Heizstabsteuerung.command</field>
+                                        <field name="WITH_DELAY">FALSE</field>
+                                        <value name="VALUE">
+                                          <block type="text" id="kfovZN+)|OsM~L~eSg=k">
+                                            <field name="TEXT">L123 aus</field>
+                                          </block>
+                                        </value>
                                       </block>
                                     </next>
                                   </block>
                                 </statement>
                                 <next>
-                                  <block type="schedule" id="zASq+U@va;AVv@|4M;Z(">
-                                    <field name="SCHEDULE">{"time":{"exactTime":true,"start":"22:00"},"period":{"days":1}}</field>
-                                    <statement name="STATEMENT">
-                                      <block type="comment" id="n?+K~q{rLQ!];W@^8Nj-">
-                                        <field name="COMMENT">Reboot zur Verhinderung von Lanzeitfehlern</field>
-                                        <next>
-                                          <block type="update" id="BTy=94;p9=M~786WD1l@">
-                                            <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
-                                            <field name="OID">javascript.0.Heizung_Heizstabsteuerung_Reboot</field>
-                                            <field name="WITH_DELAY">FALSE</field>
-                                            <value name="VALUE">
-                                              <block type="logic_boolean" id="]0,w38!(Jo[)O_Sb=b^]">
-                                                <field name="BOOL">TRUE</field>
+                                  <block type="comment" id="D`ut,uH|~zB[f3^LO;M?">
+                                    <field name="COMMENT">Meldung nach Neustart des PowerGuards</field>
+                                    <next>
+                                      <block type="on" id="-~SFq].*^Cz2@8bv8u%`">
+                                        <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_PowerGuard.ac</field>
+                                        <field name="CONDITION">ne</field>
+                                        <field name="ACK_CONDITION"></field>
+                                        <statement name="STATEMENT">
+                                          <block type="debug" id="_h(EoGh7bt;?j0QiE_CS">
+                                            <field name="Severity">info</field>
+                                            <value name="TEXT">
+                                              <shadow type="text" id="t++/w$+*jlT(0piOJ@O/">
+                                                <field name="TEXT">test</field>
+                                              </shadow>
+                                              <block type="on_source" id="Jdy*mo,wVB)=.L4KzD)J">
+                                                <field name="ATTR">state.val</field>
                                               </block>
                                             </value>
+                                            <next>
+                                              <block type="controls_if" id="ENdWO_ujQq`3~!_e1U82">
+                                                <value name="IF0">
+                                                  <block type="logic_compare" id="F%;jsoO(qw^KsfeuITWB">
+                                                    <field name="OP">EQ</field>
+                                                    <value name="A">
+                                                      <block type="get_value" id="Ndja?YVUqb?*q6w,Tq|Q">
+                                                        <field name="ATTR">val</field>
+                                                        <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_PowerGuard.ac</field>
+                                                      </block>
+                                                    </value>
+                                                    <value name="B">
+                                                      <block type="text" id="m~f!*WS(a{n4vDw5NMJy">
+                                                        <field name="TEXT">Start durchgeführt.</field>
+                                                      </block>
+                                                    </value>
+                                                  </block>
+                                                </value>
+                                                <statement name="DO0">
+                                                  <block type="telegram" id="PiWxup+LvHsctMpt?]Z5">
+                                                    <field name="INSTANCE">.0</field>
+                                                    <field name="LOG"></field>
+                                                    <field name="SILENT">FALSE</field>
+                                                    <field name="PARSEMODE">default</field>
+                                                    <field name="ESCAPING">FALSE</field>
+                                                    <field name="DISABLE_WEB_PAGE_PREVIEW">FALSE</field>
+                                                    <value name="MESSAGE">
+                                                      <shadow type="text" id="wZ0)g[USauFiNG+#G~PX">
+                                                        <field name="TEXT">Reboot durchgeführt</field>
+                                                      </shadow>
+                                                      <block type="text" id=".V_u2k]c#rHtaHQd4jTL">
+                                                        <field name="TEXT">PowerGuard: Bootvorgang erfolgreich</field>
+                                                      </block>
+                                                    </value>
+                                                    <value name="USERNAME">
+                                                      <block type="get_value" id="EgtqM!?7%cw5wg+x)W`$">
+                                                        <field name="ATTR">val</field>
+                                                        <field name="OID">javascript.0.Telegram_Gruppe_Heizung</field>
+                                                      </block>
+                                                    </value>
+                                                  </block>
+                                                </statement>
+                                                <next>
+                                                  <block type="control" id="2grT39pzSXFbduqN3`(m">
+                                                    <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
+                                                    <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_PowerGuard.command</field>
+                                                    <field name="WITH_DELAY">FALSE</field>
+                                                    <value name="VALUE">
+                                                      <block type="text" id="):,A1q[lVp(YxfE:)]{L">
+                                                        <field name="TEXT">Test</field>
+                                                      </block>
+                                                    </value>
+                                                  </block>
+                                                </next>
+                                              </block>
+                                            </next>
+                                          </block>
+                                        </statement>
+                                        <next>
+                                          <block type="comment" id="qKgrs-,Y9M+Cs}=HK=!T">
+                                            <field name="COMMENT">Reboot @ 22:00 Uhr gegen möglicher Laufzeitfehler</field>
+                                            <next>
+                                              <block type="schedule" id="zASq+U@va;AVv@|4M;Z(">
+                                                <field name="SCHEDULE">{"time":{"exactTime":true,"start":"22:00"},"period":{"days":1}}</field>
+                                                <statement name="STATEMENT">
+                                                  <block type="comment" id="n?+K~q{rLQ!];W@^8Nj-">
+                                                    <field name="COMMENT">Reboot zur Verhinderung von Lanzeitfehlern</field>
+                                                    <next>
+                                                      <block type="update" id="BTy=94;p9=M~786WD1l@">
+                                                        <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
+                                                        <field name="OID">javascript.0.Heizung_Heizstabsteuerung_Reboot</field>
+                                                        <field name="WITH_DELAY">FALSE</field>
+                                                        <value name="VALUE">
+                                                          <block type="logic_boolean" id="]0,w38!(Jo[)O_Sb=b^]">
+                                                            <field name="BOOL">TRUE</field>
+                                                          </block>
+                                                        </value>
+                                                      </block>
+                                                    </next>
+                                                  </block>
+                                                </statement>
+                                              </block>
+                                            </next>
                                           </block>
                                         </next>
                                       </block>
-                                    </statement>
+                                    </next>
                                   </block>
                                 </next>
                               </block>
