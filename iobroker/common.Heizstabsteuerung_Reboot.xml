@@ -262,20 +262,20 @@
                                             <field name="OID">javascript.0.Telegram_Gruppe_Heizung</field>
                                           </block>
                                         </value>
+                                        <next>
+                                          <block type="control" id="*I8xy+.T0Xnve2.HdK-s">
+                                            <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
+                                            <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_Heizstabsteuerung.command</field>
+                                            <field name="WITH_DELAY">FALSE</field>
+                                            <value name="VALUE">
+                                              <block type="text" id="kfovZN+)|OsM~L~eSg=k">
+                                                <field name="TEXT">L123 aus</field>
+                                              </block>
+                                            </value>
+                                          </block>
+                                        </next>
                                       </block>
                                     </statement>
-                                    <next>
-                                      <block type="control" id="*I8xy+.T0Xnve2.HdK-s">
-                                        <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
-                                        <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_Heizstabsteuerung.command</field>
-                                        <field name="WITH_DELAY">FALSE</field>
-                                        <value name="VALUE">
-                                          <block type="text" id="kfovZN+)|OsM~L~eSg=k">
-                                            <field name="TEXT">L123 aus</field>
-                                          </block>
-                                        </value>
-                                      </block>
-                                    </next>
                                   </block>
                                 </statement>
                                 <next>
@@ -337,20 +337,20 @@
                                                         <field name="OID">javascript.0.Telegram_Gruppe_Heizung</field>
                                                       </block>
                                                     </value>
+                                                    <next>
+                                                      <block type="control" id="2grT39pzSXFbduqN3`(m">
+                                                        <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
+                                                        <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_PowerGuard.command</field>
+                                                        <field name="WITH_DELAY">FALSE</field>
+                                                        <value name="VALUE">
+                                                          <block type="text" id="):,A1q[lVp(YxfE:)]{L">
+                                                            <field name="TEXT">Test</field>
+                                                          </block>
+                                                        </value>
+                                                      </block>
+                                                    </next>
                                                   </block>
                                                 </statement>
-                                                <next>
-                                                  <block type="control" id="2grT39pzSXFbduqN3`(m">
-                                                    <mutation xmlns="http://www.w3.org/1999/xhtml" delay_input="false"></mutation>
-                                                    <field name="OID">mqtt.0.SmartHome.Keller.Heizung.ESP32_PowerGuard.command</field>
-                                                    <field name="WITH_DELAY">FALSE</field>
-                                                    <value name="VALUE">
-                                                      <block type="text" id="):,A1q[lVp(YxfE:)]{L">
-                                                        <field name="TEXT">Test</field>
-                                                      </block>
-                                                    </value>
-                                                  </block>
-                                                </next>
                                               </block>
                                             </next>
                                           </block>
