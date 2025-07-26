@@ -413,21 +413,21 @@ static void checkPhase1 (void *args){
       //Aktueller Schaltzustand entspricht der Anfrage in der Queue -> Wartezeit einleiten
       if (debug) Serial.println("Schaltzustand korrekt -> schalte Delay");
       vTaskDelayUntil(&ticktime, newTickPeriod);
-      if (debug) Serial.println("Delay abgelaufen.");
+      if (debug) Serial.println("Delay abgelaufen (L1). TickTime: " + String(xTaskGetTickCount()));
     }
     //korrekte Zeit zur Überprüfung
     error = 0;
 
-    // ------------------------------------------------------------------------
     // bei schnellen Schaltungen kann die Queue mehr als ein Element enthalten.
     rc = uxQueueMessagesWaiting (amp1Queue);
     if (debug > 2) Serial.print("Anzahl von Queue-Objekten Phase 1: ");
     if (debug > 2) Serial.println(rc);
     if (rc > 0) {
-      if (debug > 2) Serial.println("Anzahl > 0 -> Queue-Eintrag wird zur Prüfung ignoriert. Neuer Schaltzustande wird ausgelesen.");
+      if (debug) Serial.println("Queue-Eintrag > 0 -> Queue-Eintrag wird zur Prüfung ignoriert. (L1). TickTime: " + String(xTaskGetTickCount()));
       lastError = "Schnelle Schaltung erkannt -> Phasencheck Phase 1 übersprungen.";
     }
     if (rc == 0) {
+      if (debug) Serial.println("Queue-Eintrag = 0 -> Queue-Eintrag wird geprüft. (L3). TickTime: " + String(xTaskGetTickCount()));
       //aktueller Stromwerte auslesen
       rc = xSemaphoreTake(mutexAmpSensor, portMAX_DELAY);
       assert(rc == pdPASS);
@@ -548,7 +548,7 @@ static void checkPhase2 (void *args){
       //Aktueller Schaltzustand entspricht der Anfrage in der Queue -> Wartezeit einleiten
       if (debug) Serial.println("Schaltzustand korrekt -> schalte Delay");
       vTaskDelayUntil(&ticktime, newTickPeriod);
-      if (debug) Serial.println("Delay abgelaufen.");
+      if (debug) Serial.println("Delay abgelaufen (L2). TickTime: " + String(xTaskGetTickCount()));
     }
     //korrekte Zeit zur Überprüfung
     error = 0;
@@ -558,10 +558,11 @@ static void checkPhase2 (void *args){
     if (debug > 2) Serial.print("Anzahl von Queue-Objekten Phase 2: ");
     if (debug > 2) Serial.println(rc);
     if (rc > 0) {
-      if (debug > 2) Serial.println("Anzahl > 0 -> Queue-Eintrag wird zur Prüfung ignoriert. Neuer Schaltzustande wird ausgelesen.");
+      if (debug) Serial.println("Queue-Eintrag > 0 -> Queue-Eintrag wird zur Prüfung ignoriert. (L2). TickTime: " + String(xTaskGetTickCount()));
       lastError = "Schnelle Schaltung erkannt -> Phasencheck Phase 2 übersprungen.";
     }
     if (rc == 0) {
+      if (debug) Serial.println("Queue-Eintrag = 0 -> Queue-Eintrag wird geprüft. (L3). TickTime: " + String(xTaskGetTickCount()));
       //aktueller Stromwerte auslesen
       rc = xSemaphoreTake(mutexAmpSensor, portMAX_DELAY);
       assert(rc == pdPASS);
@@ -681,7 +682,7 @@ static void checkPhase3 (void *args){
       //Aktueller Schaltzustand entspricht der Anfrage in der Queue -> Wartezeit einleiten
       if (debug) Serial.println("Schaltzustand korrekt -> schalte Delay");
       vTaskDelayUntil(&ticktime, newTickPeriod);
-      if (debug) Serial.println("Delay abgelaufen.");
+      if (debug) Serial.println("Delay abgelaufen (L3). TickTime: " + String(xTaskGetTickCount()));
     }
     //korrekte Zeit zur Überprüfung
     error = 0;
@@ -691,10 +692,11 @@ static void checkPhase3 (void *args){
     if (debug > 2) Serial.print("Anzahl von Queue-Objekten Phase 3: ");
     if (debug > 2) Serial.println(rc);
     if (rc > 0) {
-      if (debug > 2) Serial.println("Anzahl > 0 -> Queue-Eintrag wird zur Prüfung ignoriert. Neuer Schaltzustande wird ausgelesen.");
+      if (debug) Serial.println("Queue-Eintrag > 0 -> Queue-Eintrag wird zur Prüfung ignoriert. (L3). TickTime: " + String(xTaskGetTickCount()));
       lastError = "Schnelle Schaltung erkannt -> Phasencheck Phase 3 übersprungen.";
     }
     if (rc == 0) {
+      if (debug) Serial.println("Queue-Eintrag = 0 -> Queue-Eintrag wird geprüft. (L3). TickTime: " + String(xTaskGetTickCount()));
       //aktueller Stromwerte auslesen
       rc = xSemaphoreTake(mutexAmpSensor, portMAX_DELAY);
       assert(rc == pdPASS);
@@ -2026,7 +2028,12 @@ void panicStop() {
   digitalWrite(LED_ERROR, HIGH);
   // diese Zeilen erst aktivieren, wenn die Hardware stabil läuft! der Reset führt sonst ggf. zum zyklischen Fehler!
   delay(100);
-  Serial.println("Reboot durch PanicStop!");
+  // Ausgabe des letzten Status!
+  if (debug) Serial.println("MQTT state wird ausgegeben. TickTime: " + String(xTaskGetTickCount()));
+  printStateMQTT();
+  delay(100);
+  //goodby...
+  Serial.println("Reboot durch PanicStop! TickTime: " + String(xTaskGetTickCount()));
   ESP.restart();
 }
 //Termale abschaltung
@@ -2284,13 +2291,8 @@ static void displayUpdate (void *args){
 void setup() {
   //Watchdog starten
   esp_err_t er;
-  esp_task_wdt_config_t wdt_config = {
-    .timeout_ms = 300000,  // 5 Minuten = 300000 ms
-    .idle_core_mask = (1 << 1),  // Nur Kerne 1 überwachen
-    .trigger_panic = true
-  };
-  er = esp_task_wdt_reconfigure(&wdt_config);  //restart nach 5min = 300s Inaktivität einer der 4 überwachten Tasks 
-  assert(er == ESP_OK); 
+  // Set watchdog timeout to 5 minutes (300 seconds)
+  esp_task_wdt_init(300, true); // timeout in seconds, panic = true
   // Initialisierung und Plausibilitaetschecks
   Serial.begin(115200);
   while (!Serial)
