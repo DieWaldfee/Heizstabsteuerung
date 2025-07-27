@@ -107,12 +107,13 @@ Zeile 2:
 **Nachträgliche Kalibrierung der Strommessung:**
 * Phasenlimits per Befehl temporär auf 100A setzen mit dem Befehl "phasen1Limit=100"
 * Phasen ausschalten mit dem Befehl "L123 aus"
-* Befehl "Irms" ausführen, um Irms10, Irms20 und Irms30 mit den Rohdaten zu füllen - Ausgabe im nächsten Ausgabeintervall
+* Befehl "IrmsOff" ausführen, um Irms10, Irms20 und Irms30 mit den Rohdaten zu füllen - Ausgabe im nächsten Ausgabeintervall
 * Phasen einschalten mit dem Befehl "L123 ein"
-* Befehl "Irms" ausführen, um Irms11, Irms21 und Irms31 mit den Rohdaten zu füllen - Ausgabe im nächsten Ausgabeintervall
+* Befehl "IrmsOn" ausführen, um Irms11, Irms21 und Irms31 mit den Rohdaten zu füllen - Ausgabe im nächsten Ausgabeintervall
 * parallel den tatsächlichen Strom mit z.B. einer Stromzange oder einer Shelly 3EM o.Ä. messen
 * Phasen ausschalten mit dem Befehl "L123 aus"
 * Berechnung der Kalibrierungswerte ADC_L1_corr, ADC_L1_zeroCorr, ... ausführen und ggf. im Code temporär ändern und neu flashen
+* Befehl "reboot" ausführen -> alles neu initiieren
 
 **Bezugsquellen:**
 * Platinennetzteil AC-05-3    <a href="https://www.azdelivery.de/products/copy-of-220v-zu-5v-mini-netzteil"> AZ-Delivery </a>
