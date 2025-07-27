@@ -38,6 +38,7 @@ esp_task_wdt.h:________Espressif IDE<br>
 ### Board ESP32
 esp32 by Espressif Systems v1.0.6 (über Arduino IDE)<br>
 Achtung: v1.0.6 ist im Zusammenspiel mit emonlib erforderlich!<br>
+Getestet habe ich auch v2.0.5 - hier sind Änderungen ver der ADC-Steuerung integriert, die scheinbar keinen Einfluss auf die Steuerung mit emonlib haben.<br>
 
 **aktuelle Versionen:** <br>
 - ESP-Software    V2.0.2
