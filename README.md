@@ -88,7 +88,7 @@ Zeile 2:
 
 **Steuerung:**
 * Befehle werden über MQTT auf /command gesendet.
-* Befehlsliste (alle Befehle liegen in der MQTT-Callback-Funktion void mqttCallback()):
+* Befehlsliste (alle Befehle liegen in der MQTT-Callback-Funktion void mqttCallback(...)):
   * "L1 ein": schaltet L1 ein
   * "L1 aus": schaltet L1 aus
   * "L2 ein": schaltet L2 ein
