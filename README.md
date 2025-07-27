@@ -113,6 +113,7 @@ Zeile 2:
 * parallel den tatsächlichen Strom mit z.B. einer Stromzange oder einer Shelly 3EM o.Ä. messen
 * Phasen ausschalten mit dem Befehl "L123 aus"
 * Berechnung der Kalibrierungswerte ADC_L1_corr, ADC_L1_zeroCorr, ... ausführen und ggf. im Code temporär ändern und neu flashen
+* Zur Vereinfachung kann zur Berechnung die Tabelle Kalibrierung.xlsx im Verzeichnis ESP32DevKitV4/SCT013_cal verwendet werden.
 * Befehl "reboot" ausführen -> alles neu initiieren
 
 **Bezugsquellen:**
