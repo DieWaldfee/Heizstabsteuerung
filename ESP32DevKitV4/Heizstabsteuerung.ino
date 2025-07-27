@@ -30,11 +30,20 @@ int volatile panicMode = 0;           // Indikator für die Zwangsabschaltung - 
 float volatile amp1 = 0.0;            // Phasenstrom Phase 1
 float volatile amp2 = 0.0;            // Phasenstrom Phase 2
 float volatile amp3 = 0.0;            // Phasenstrom Phase 3
+float volatile Irms10 = 0.0;          // Stromwert L1 aus. Irms-Rohdaten werden durch getAmpCore() gefüllt. Dient der späteren Kalibrierung von ADC_L1_corr
+float volatile Irms11 = 15.0;         // Stromwert L1 ein. Irms-Rohdaten werden durch getAmpCore() gefüllt. Dient der späteren Kalibrierung von ADC_L1_corr
+float volatile Irms20 = 0.0;          // Stromwert L2 aus. Irms-Rohdaten werden durch getAmpCore() gefüllt. Dient der späteren Kalibrierung von ADC_L2_corr
+float volatile Irms21 = 15.0;         // Stromwert L2 ein. Irms-Rohdaten werden durch getAmpCore() gefüllt. Dient der späteren Kalibrierung von ADC_L2_corr
+float volatile Irms30 = 0.0;          // Stromwert L3 aus. Irms-Rohdaten werden durch getAmpCore() gefüllt. Dient der späteren Kalibrierung von ADC_L3_corr
+float volatile Irms31 = 15.0;         // Stromwert L3 ein. Irms-Rohdaten werden durch getAmpCore() gefüllt. Dient der späteren Kalibrierung von ADC_L3_corr
 #define ZEROHYST 0.8                  // +- xA ZeroHyst um 0A = aus - sonst an
 EnergyMonitor emon1;
 EnergyMonitor emon2;
 EnergyMonitor emon3;
 //Kalibrierung auf den verwendeten Sensor erforderlich - Ausgleich von Toleranzen!
+float ADC_L1_Sensor = 15.0;           // Sensorwert pro Volt Ausgabe. (15.0 bei 15A / V)
+float ADC_L2_Sensor = 15.0;           // Sensorwert pro Volt Ausgabe. (15.0 bei 15A / V)
+float ADC_L3_Sensor = 15.0;           // Sensorwert pro Volt Ausgabe. (15.0 bei 15A / V)
 float ADC_L1_corr = 14.48;            // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L1_corr = Aist/15A => ADC_L1_corr = Asoll/Aist * 15A)
 float ADC_L2_corr = 14.59;            // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L2_corr = Aist/15A => ADC_L2_corr = Asoll/Aist * 15A)
 float ADC_L3_corr = 14.75;            // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L3_corr = Aist/15A => ADC_L3_corr = Asoll/Aist * 15A)
@@ -205,6 +214,8 @@ static QueueHandle_t free3Queue;       //Queue-Handler - wenn leer, dann Integri
 //erforderliche Funtions-Prototypen
 void panicStop(void);
 float getAmp_SCT013(int);
+void getAmpCoreOn(void);
+void getAmpCoreOff(void);
 void thermalStop (void);
 
 //-------------------------------------
@@ -426,7 +437,7 @@ static void checkPhase1 (void *args){
       lastError = "Schnelle Schaltung erkannt -> Phasencheck Phase 1 übersprungen.";
     }
     if (rc == 0) {
-      if (debug) Serial.println("Queue-Eintrag = 0 -> Queue-Eintrag wird geprüft. (L3). TickTime: " + String(xTaskGetTickCount()));
+      if (debug) Serial.println("Queue-Eintrag = 0 -> Queue-Eintrag wird geprüft. (L1). TickTime: " + String(xTaskGetTickCount()));
       //aktueller Stromwerte auslesen
       rc = xSemaphoreTake(mutexAmpSensor, portMAX_DELAY);
       assert(rc == pdPASS);
@@ -561,7 +572,7 @@ static void checkPhase2 (void *args){
       lastError = "Schnelle Schaltung erkannt -> Phasencheck Phase 2 übersprungen.";
     }
     if (rc == 0) {
-      if (debug) Serial.println("Queue-Eintrag = 0 -> Queue-Eintrag wird geprüft. (L3). TickTime: " + String(xTaskGetTickCount()));
+      if (debug) Serial.println("Queue-Eintrag = 0 -> Queue-Eintrag wird geprüft. (L2). TickTime: " + String(xTaskGetTickCount()));
       //aktueller Stromwerte auslesen
       rc = xSemaphoreTake(mutexAmpSensor, portMAX_DELAY);
       assert(rc == pdPASS);
@@ -1161,6 +1172,18 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     if (debug) Serial.println("führe Restart aus!");
     ESP.restart();
   }
+  if ((tx_ac) && (str.startsWith("IrmsOn"))) {
+    mqttClient.publish(mqttTopicAC.c_str(), "Irms-Auswertung gestartet");
+    if (debug) Serial.println("Irms-Auswertung gestartet");
+    getAmpCoreOn();
+    if (debug) Serial.println("Irms-Auswertung beendet");
+  }  
+  if ((tx_ac) && (str.startsWith("IrmsOff"))) {
+    mqttClient.publish(mqttTopicAC.c_str(), "Irms-Auswertung gestartet");
+    if (debug) Serial.println("Irms-Auswertung gestartet");
+    getAmpCoreOff();
+    if (debug) Serial.println("Irms-Auswertung beendet");
+  }  
   //Free Mutex
   rc = xSemaphoreGive(mutexStatus);
   assert(rc == pdPASS);
@@ -1276,6 +1299,16 @@ void printStateMQTT() {
   mqttJson += ",\"WiFi_MAC_Adress\":\"" + WiFi.macAddress() + "\"}";
   if (debug > 2) Serial.println("MQTT_JSON: " + mqttJson);
   mqttClient.publish(mqttTopic.c_str(), mqttJson.c_str());
+  mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
+  mqttTopic += "JSON_2";
+  mqttJson = "{\"Irms10\":\"" + String(Irms10) + "\"";
+  mqttJson += ",\"Irms11\":\"" + String(Irms11) + "\"";
+  mqttJson += ",\"Irms20\":\"" + String(Irms20) + "\"";
+  mqttJson += ",\"Irms21\":\"" + String(Irms21) + "\"";
+  mqttJson += ",\"Irms30\":\"" + String(Irms30) + "\"";
+  mqttJson += ",\"Irms31\":\"" + String(Irms31) + "\"}";
+  if (debug > 2) Serial.println("MQTT_JSON: " + mqttJson);
+  mqttClient.publish(mqttTopic.c_str(), mqttJson.c_str());
   //panicMode
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "panicMode";
@@ -1362,7 +1395,44 @@ void printStateMQTT() {
   mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
   if (debug > 2) Serial.print("MQTT thermalMaxOverheat: ");
   if (debug > 2) Serial.println(mqttPayload);
+  //Irmsxx - Ausgabe von Irms-Rohwerten
+  mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
+  mqttTopic += "Irms10";
+  mqttPayload = String(Irms10);
+  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  if (debug > 2) Serial.print("MQTT Irms10: ");
+  if (debug > 2) Serial.println(mqttPayload);
+  mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
+  mqttTopic += "Irms11";
+  mqttPayload = String(Irms11);
+  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  if (debug > 2) Serial.print("MQTT Irms11: ");
+  if (debug > 2) Serial.println(mqttPayload);  mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
+  mqttTopic += "Irms20";
+  mqttPayload = String(Irms20);
+  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  if (debug > 2) Serial.print("MQTT Irms20: ");
+  if (debug > 2) Serial.println(mqttPayload);
+  mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
+  mqttTopic += "Irms21";
+  mqttPayload = String(Irms21);
+  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  if (debug > 2) Serial.print("MQTT Irms21: ");
+  if (debug > 2) Serial.println(mqttPayload);
+  mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
+  mqttTopic += "Irms30";
+  mqttPayload = String(Irms30);
+  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  if (debug > 2) Serial.print("MQTT Irms30: ");
+  if (debug > 2) Serial.println(mqttPayload);
+  mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
+  mqttTopic += "Irms31";
+  mqttPayload = String(Irms31);
+  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  if (debug > 2) Serial.print("MQTT Irms31: ");
+  if (debug > 2) Serial.println(mqttPayload);
 }
+
 // MQTT Config und Parameter senden
 void printConfigMQTT() {
   //Teil 1
@@ -1702,25 +1772,124 @@ static void integrityCheck (void *args){
 // Stromsensoren auslesen
 float getAmp_SCT013(int phase){
   double Irms;
+  double IrmsCore;
 
   if (debug > 2) Serial.println("Starte Strommessung...");
 
-  if (phase < 1) Irms = 0.0;
-  if (phase == 1) Irms = emon1.calcIrms(1480) - ADC_L1_zeroCorr;
-  if (phase == 2) Irms = emon2.calcIrms(1480) - ADC_L2_zeroCorr;
-  if (phase == 3) Irms = emon3.calcIrms(1480) - ADC_L3_zeroCorr;
-  if (phase > 3) Irms = 0.0;
-  
+  if (phase < 1) {
+    IrmsCore = 0.0;
+    Irms = 0.0;
+  }
+  if (phase == 1) {
+    IrmsCore = emon1.calcIrms(1480);
+    Irms = IrmsCore - ADC_L1_zeroCorr;
+  }
+  if (phase == 2) {
+    IrmsCore = emon2.calcIrms(1480);
+    Irms = IrmsCore - ADC_L2_zeroCorr;
+  }
+  if (phase == 3) {
+    IrmsCore = emon3.calcIrms(1480);
+    Irms = IrmsCore - ADC_L3_zeroCorr;
+  }
+  if (phase > 3) {
+    IrmsCore = 0.0;
+    Irms = 0.0;
+  }
+
   if (debug > 2) Serial.print("Strom Phase ");
   if (debug > 2) Serial.print(phase);
-  if (debug > 2) Serial.print(": ");
+  if (debug > 2) Serial.print(": I_RMS = ");
   if (debug > 2) Serial.print(Irms);
   if (debug > 2) Serial.print(" A -> ");
   if (debug > 2) Serial.print(Irms*230.0);
-  if (debug > 2) Serial.println(" W");
+  if (debug > 2) Serial.print(" W. (gemessen: ");
+  if (debug > 2) Serial.print(IrmsCore);
+  if (debug > 2) Serial.println(")");
 
   return Irms;
 }
+//Ausgabe der rohen Irms-Werte als Basis einer Kalibrierung im eingeschalteten Zustand
+void getAmpCoreOn(){
+  BaseType_t rc;
+  double Irms1;
+  double Irms2;
+  double Irms3;
+
+  if (debug) Serial.println("Starte Irms-Core-Messung...");
+
+  rc = xSemaphoreTake(mutexAmpSensor, portMAX_DELAY);
+  assert(rc == pdPASS);
+    rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
+    assert(rc == pdPASS);
+      if (debug) Serial.println("emon1 bis emon3 rekonfigurieren");
+      //Rekonfiguration auf Ermittlung der Irms-Rohdaten
+      emon1.current(ADC_L1, ADC_L1_Sensor);
+      emon2.current(ADC_L2, ADC_L2_Sensor);
+      emon3.current(ADC_L3, ADC_L3_Sensor);
+      delay(5000);
+      //Messung der rohen Sensordaten
+      if (debug) Serial.println("Irms1 bis Irms3 ermitteln");
+      Irms1 = emon1.calcIrms(1480);
+      Irms2 = emon2.calcIrms(1480);
+      Irms3 = emon3.calcIrms(1480);
+      //Konfiguration auf den Betriebszustand
+      if (debug) Serial.println("emon1 bis emon3 für Betrieb konfigurieren");
+      emon1.current(ADC_L1, ADC_L1_corr);
+      emon2.current(ADC_L2, ADC_L2_corr);
+      emon3.current(ADC_L3, ADC_L3_corr);
+      delay(5000);
+    rc = xSemaphoreGive(mutexAmp);
+    assert(rc == pdPASS);
+  rc = xSemaphoreGive(mutexAmpSensor);
+  assert(rc == pdPASS);
+
+  Irms11 = Irms1;
+  Irms21 = Irms2;
+  Irms31 = Irms3;
+
+  if (debug) Serial.print("Irms11: ");
+  if (debug) Serial.println(Irms11);
+  if (debug) Serial.print("Irms21: ");
+  if (debug) Serial.println(Irms21);
+  if (debug) Serial.print("Irms31: ");
+  if (debug) Serial.println(Irms31);
+}
+//Ausgabe der rohen Irms-Werte als Basis einer Kalibrierung im ausgeschalteten Zustand
+void getAmpCoreOff(){
+  BaseType_t rc;
+  double Irms1;
+  double Irms2;
+  double Irms3;
+
+  if (debug) Serial.println("Starte Irms-Core-Messung...");
+
+  rc = xSemaphoreTake(mutexAmpSensor, portMAX_DELAY);
+  assert(rc == pdPASS);
+    rc = xSemaphoreTake(mutexAmp, portMAX_DELAY);
+    assert(rc == pdPASS);
+      //Messung der rohen Sensordaten
+      if (debug) Serial.println("Irms1 bis Irms3 ermitteln");
+      Irms1 = emon1.calcIrms(1480);
+      Irms2 = emon2.calcIrms(1480);
+      Irms3 = emon3.calcIrms(1480);
+    rc = xSemaphoreGive(mutexAmp);
+    assert(rc == pdPASS);
+  rc = xSemaphoreGive(mutexAmpSensor);
+  assert(rc == pdPASS);
+
+  Irms10 = Irms1;
+  Irms20 = Irms2;
+  Irms30 = Irms3;
+
+  if (debug) Serial.print("Irms10: ");
+  if (debug) Serial.println(Irms10);
+  if (debug) Serial.print("Irms20: ");
+  if (debug) Serial.println(Irms20);
+  if (debug) Serial.print("Irms30: ");
+  if (debug) Serial.println(Irms30);
+}
+
 //-------------------------------------
 //Task zur Ermittlung der fließenden Ströme
 static void getAmpFromSensor (void *args){
