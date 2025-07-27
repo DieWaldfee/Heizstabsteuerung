@@ -86,6 +86,33 @@ Zeile 2:
   * T_Messpunkt_1: erste Messung auf der Entschiedungsebene (in der Regel parallel zum Sensor der Heizung) [°C]
   * T_Messpunkt_2: zweite Messung auf der Entschiedungsebene [°C]
 
+**Steuerung:**
+* Befehle werden über MQTT auf /command gesendet.
+* Befehlsliste (alle Befehle liegen in der MQTT-Callback-Funktion void mqttCallback()):
+  * "L1 ein": schaltet L1 ein
+  * "L1 aus": schaltet L1 aus
+  * "L2 ein": schaltet L2 ein
+  * "L2 aus": schaltet L2 aus
+  * "L3 ein": schaltet L3 ein
+  * "L3 aus": schaltet L3 aus
+  * "L12 ein": schaltet L1 und L2 ein
+  * "L12 aus": schaltet L1 und L2 aus
+  * "L23 ein": schaltet L2 und L3 ein
+  * "L23 aus": schaltet L2 und L3 aus
+  * "L123 ein": schaltet L1, L2 und L3 ein
+  * "L123 aus": schaltet L1, L2 und L3 aus
+  * "Irms": befüllt - je nach Schaltzustand - die Parameter Irms10 (für L1 aus), Irms11 (für L1 ein), ... und dient zur nachträglichen Kalibrierung
+  * ... siehe void mqttCallback()
+
+**Nachträgliche Kalibrierung der Strommessung:**
+* Phasenlimits per Befehl temporär auf 100A setzen mit dem Befehl "phasen1Limit=100"
+* Phasen ausschalten mit dem Befehl "L123 aus"
+* Befehl "Irms" ausführen, um Irms10, Irms20 und Irms30 mit den Rohdaten zu füllen - Ausgabe im nächsten Ausgabeintervall
+* Phasen einschalten mit dem Befehl "L123 ein"
+* Befehl "Irms" ausführen, um Irms11, Irms21 und Irms31 mit den Rohdaten zu füllen - Ausgabe im nächsten Ausgabeintervall
+* Phasen ausschalten mit dem Befehl "L123 aus"
+* Berechnung der Kalibrierungswerte ADC_L1_corr, ADC_L1_zeroCorr, ... ausführen und ggf. im Code temporär ändern und neu flashen
+
 **Bezugsquellen:**
 * Platinennetzteil AC-05-3    <a href="https://www.azdelivery.de/products/copy-of-220v-zu-5v-mini-netzteil"> AZ-Delivery </a>
 * Levelshifter (3.3V <-> 5V)  <a href="https://www.amazon.de/RUNCCI-YUN-Pegelwandler-Converter-BiDirektional-Mikrocontroller/dp/B082F6BSB5/ref=sr_1_2?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=45TPZ9B8CUP9&keywords=level+shifter&qid=1699045033&sprefix=level+shifter%2Caps%2C103&sr=8-2"> Amazon </a>
