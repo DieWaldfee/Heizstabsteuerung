@@ -48,9 +48,9 @@ float ADC_L3_Sensor = 15.0;           // Sensorwert pro Volt Ausgabe. (15.0 bei 
 float ADC_L1_corr = 14.70;            // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L1_corr = Aist/15A => ADC_L1_corr = Asoll/Aist * 15A)
 float ADC_L2_corr = 14.70;            // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L2_corr = Aist/15A => ADC_L2_corr = Asoll/Aist * 15A)
 float ADC_L3_corr = 14.70;            // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L3_corr = Aist/15A => ADC_L3_corr = Asoll/Aist * 15A)
-float ADC_L1_zeroCorr = 0.30;         // Basiskorrketur bei 0A (Irms_korr = Irms - zeroCorr)@0A - korrigiert Unzulänglichkeiten der Widerstände
-float ADC_L2_zeroCorr = 0.14;         // Basiskorrketur bei 0A (Irms_korr = Irms - zeroCorr)@0A - korrigiert Unzulänglichkeiten der Widerstände
-float ADC_L3_zeroCorr = 0.17;         // Basiskorrketur bei 0A (Irms_korr = Irms - zeroCorr)@0A - korrigiert Unzulänglichkeiten der Widerstände
+float ADC_L1_zeroCorr = 0.19;         // Basiskorrketur bei 0A (Irms_korr = Irms - zeroCorr)@0A - korrigiert Unzulänglichkeiten der Widerstände
+float ADC_L2_zeroCorr = 0.19;         // Basiskorrketur bei 0A (Irms_korr = Irms - zeroCorr)@0A - korrigiert Unzulänglichkeiten der Widerstände
+float ADC_L3_zeroCorr = 0.18;         // Basiskorrketur bei 0A (Irms_korr = Irms - zeroCorr)@0A - korrigiert Unzulänglichkeiten der Widerstände
 
 //Schaltausgaenge für Phase 1-3 und Luefter
 #define PHASE1 16                     // Steuerpin für Phase 1 on/off
