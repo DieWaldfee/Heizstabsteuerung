@@ -498,6 +498,8 @@ static void checkPhase1 (void *args){
       // Freigabe der Queue für Phase 1
       rc = xQueueReset (free1Queue);
       assert(rc == pdPASS);
+      //MQTT-Ausgabe des Schaltzustands
+      printAmpMQTT(amp,1,pon);
     } 
   }
 }
@@ -632,6 +634,8 @@ static void checkPhase2 (void *args){
       // Freigabe der Queue für Phase 2
       rc = xQueueReset (free2Queue);
       assert(rc == pdPASS);
+      //MQTT-Ausgabe des Schaltzustands
+      printAmpMQTT(amp,2,pon);
     }
   }
 }
@@ -766,6 +770,8 @@ static void checkPhase3 (void *args){
       // Freigabe der Queue für Phase 3
       rc = xQueueReset (free3Queue);
       assert(rc == pdPASS);
+      //MQTT-Ausgabe des Schaltzustands
+      printAmpMQTT(amp,3,pon);
     }
   }
 }
@@ -1161,6 +1167,18 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("restart"))) {
+    mqttClient.publish(mqttTopicAC.c_str(), "reboot in einer Sekunde!");
+    if (debug) Serial.println("für Restart: alles aus & restart in 1s!");
+    digitalWrite(PHASE1, HIGH);
+    digitalWrite(PHASE2, HIGH);
+    digitalWrite(PHASE3, HIGH);
+    digitalWrite(LED_OK, LOW);
+    digitalWrite(LED_ERROR, HIGH);
+    vTaskDelay(1000);
+    if (debug) Serial.println("führe Restart aus!");
+    ESP.restart();
+  }
+  if ((tx_ac) && (str.startsWith("reboot"))) {
     mqttClient.publish(mqttTopicAC.c_str(), "reboot in einer Sekunde!");
     if (debug) Serial.println("für Restart: alles aus & restart in 1s!");
     digitalWrite(PHASE1, HIGH);
@@ -1796,7 +1814,7 @@ float getAmp_SCT013(int phase){
     IrmsCore = 0.0;
     Irms = 0.0;
   }
-
+  
   if (debug > 2) Serial.print("Strom Phase ");
   if (debug > 2) Serial.print(phase);
   if (debug > 2) Serial.print(": I_RMS = ");
