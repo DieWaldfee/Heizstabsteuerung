@@ -1,0 +1,79 @@
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <block type="comment" id="V.1bw-9GC2~trlz3.!Qf" x="163" y="-463">
+    <field name="COMMENT">Workaround gegen unzulängliche Behandlung&amp;#10;LWT durch shelly. =&gt; irregulär als &amp;#10;offline markiert</field>
+    <next>
+      <block type="comment" id="M84m$S[hZio`HFHOtGu+">
+        <field name="COMMENT">Initialisierung: Shelly 1PM Notaus</field>
+        <next>
+          <block type="controls_if" id="PO(vu.Wl/ez96JRI2.L,">
+            <value name="IF0">
+              <block type="logic_negate" id="kMyOfr[tHtq0lUeRQBFW">
+                <value name="BOOL">
+                  <block type="get_value" id="X~Uv~}!CNp.uh/8h(e9A">
+                    <field name="ATTR">val</field>
+                    <field name="OID">mqtt.0.SmartHome.Keller.Heizung.HeizstabNotaus.online</field>
+                  </block>
+                </value>
+              </block>
+            </value>
+            <statement name="DO0">
+              <block type="http_get" id="(LHt@wP[0ve4=vr0%N7]">
+                <field name="TIMEOUT">2000</field>
+                <field name="UNIT">ms</field>
+                <field name="TYPE">text</field>
+                <value name="URL">
+                  <shadow type="text" id="/X^TIqW%,]ajdRdAI(9u">
+                    <field name="TEXT">http://</field>
+                  </shadow>
+                  <block type="text" id="RJNzi~BNiS755]UJnH%5">
+                    <field name="TEXT">http://192.168.2.200/rpc/Shelly.Reboot</field>
+                  </block>
+                </value>
+              </block>
+            </statement>
+            <next>
+              <block type="comment" id="3}y7CWN+D]Xmdv$wIhGU">
+                <field name="COMMENT">Shelly 1PM Notaus</field>
+                <next>
+                  <block type="on" id="`6tg_I?4I3x%4za@6JBZ">
+                    <field name="OID">mqtt.0.SmartHome.Keller.Heizung.HeizstabNotaus.online</field>
+                    <field name="CONDITION">any</field>
+                    <field name="ACK_CONDITION"></field>
+                    <statement name="STATEMENT">
+                      <block type="controls_if" id="pBi:7[]fw+3Ozeodr_2L">
+                        <value name="IF0">
+                          <block type="logic_negate" id="+;,@Oakh~XiI4_{+(kYf">
+                            <value name="BOOL">
+                              <block type="on_source" id="E~lBkq+-s@bcg5N{Z_56">
+                                <field name="ATTR">state.val</field>
+                              </block>
+                            </value>
+                          </block>
+                        </value>
+                        <statement name="DO0">
+                          <block type="http_get" id="^^?i0.qo8@c0mt;NczSv">
+                            <field name="TIMEOUT">2000</field>
+                            <field name="UNIT">ms</field>
+                            <field name="TYPE">text</field>
+                            <value name="URL">
+                              <shadow type="text" id="/X^TIqW%,]ajdRdAI(9u">
+                                <field name="TEXT">http://</field>
+                              </shadow>
+                              <block type="text" id="w4ZHm!~mUfR8.rkj;fNX">
+                                <field name="TEXT">http://192.168.2.200/rpc/Shelly.Reboot</field>
+                              </block>
+                            </value>
+                          </block>
+                        </statement>
+                      </block>
+                    </statement>
+                  </block>
+                </next>
+              </block>
+            </next>
+          </block>
+        </next>
+      </block>
+    </next>
+  </block>
+</xml>
