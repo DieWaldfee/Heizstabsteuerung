@@ -1620,6 +1620,10 @@ void checkMQTTconnetion() {
       thermalLimit = 0;
     rc = xSemaphoreGive(mutexStatus);
     assert(rc == pdPASS);
+    //reconnect zurückmelden
+    mqttTopic = MQTT_SERIAL_PUBLISH_BASIS + String("ac");
+    mqttPayload = String("MQTT reconnect durchgeführt!");
+    mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
   }
   mqttClient.loop();
 }
