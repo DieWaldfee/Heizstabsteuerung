@@ -220,6 +220,22 @@ void getAmpCoreOff(void);
 void thermalStop (void);
 
 //-------------------------------------
+// Basisfunktion zum sicheren Reset
+void safeReset() {
+  // MQTT disconnecten
+  Serial.println("MQTT Disconnect...");
+  if (mqttClient.connected()) mqttClient.disconnect();
+  delay(50);
+  // TCP-Puffer flushen - alle Pakete aus dem Speicher
+  Serial.println("Flush TCP-Buffer...");
+  myWiFiClient.flush();
+  delay(50);
+  // restart durchführen
+  Serial.println("ESP32 Reset!");
+  ESP.restart();
+}
+
+//-------------------------------------
 //Wirft den gewünschten Phasencheck in die passende Queue
 //mode = 1 -> ein ; mode = 0 -> aus
 void queuePhaseCheck(int phase, byte mode) {
@@ -1177,7 +1193,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     digitalWrite(LED_ERROR, HIGH);
     vTaskDelay(1000);
     if (debug) Serial.println("führe Restart aus!");
-    ESP.restart();
+    safeReset();
   }
   if ((tx_ac) && (str.startsWith("reboot"))) {
     mqttClient.publish(mqttTopicAC.c_str(), "reboot in einer Sekunde!");
@@ -1189,7 +1205,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     digitalWrite(LED_ERROR, HIGH);
     vTaskDelay(1000);
     if (debug) Serial.println("führe Restart aus!");
-    ESP.restart();
+    safeReset();
   }
   if ((tx_ac) && (str.startsWith("IrmsOn"))) {
     mqttClient.publish(mqttTopicAC.c_str(), "Irms-Auswertung gestartet");
@@ -1589,7 +1605,7 @@ void mqttConnect () {
     else {
       if (++i > 20) {
         Serial.println("MQTT scheint nicht mehr erreichbar! Reboot!!");
-        ESP.restart();
+        safeReset();
       }
       Serial.print("fehlgeschlagen rc=");
       Serial.print(mqttClient.state());
@@ -2004,7 +2020,7 @@ void readDS18B20() {
       if (debug > 2) Serial.print("LastError: ");
       if (debug > 2) Serial.println(mqttPayload);
       delay(500);
-      ESP.restart();
+      safeReset();
     }
   }
   //Plausibilitätscheck
@@ -2054,7 +2070,7 @@ void readDS18B20() {
     digitalWrite(PHASE1, HIGH);
     digitalWrite(PHASE2, HIGH);
     digitalWrite(PHASE3, HIGH);
-    ESP.restart();
+    safeReset();
   }
 }
 //Thermale Limits prüfen und ggf. reagieren
@@ -2225,7 +2241,7 @@ void panicStop() {
   delay(100);
   //goodby...
   Serial.println("Reboot durch PanicStop! TickTime: " + String(xTaskGetTickCount()));
-  ESP.restart();
+  safeReset();
 }
 //Termale abschaltung
 void thermalStop() {
