@@ -139,3 +139,8 @@ Zeile 2:
 (bestückte Heizstabsteuerung mit angeschlossenen Strom-Sensoren und Display - ohne Temperatursensoren)
 ![20230820_132003](https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/762af524-1a9f-48d2-b9e9-3894cdf792a2)
 (Gesamtschaltung am Pufferspeicher - links die Steuerung und rechts die SSR-Relais und deren Kühlkörper)
+
+**Haftungsausschluss**<br>
+Deutsch: Dieses Projekt arbeitet mit Netzspannung (220 V) und darf ausschließlich von qualifiziertem Fachpersonal aufgebaut, installiert und betrieben werden. Durch die anliegende Spannung besteht Lebensgefahr! Fehler in Schaltung oder Software können zu Sachschäden (z. B. an Gebäude oder Heizung) oder zu gefährlichen Situationen für Leib und Leben führen. Nutzung auf eigene Gefahr – jegliche Haftung wird ausgeschlossen.
+<br>
+English: This project operates with mains voltage (220 V) and must only be assembled, installed, and operated by qualified professionals. The present voltage poses a risk of fatal electric shock! Errors in circuitry or software may cause property damage (e.g., to buildings or heating systems) or create life-threatening situations. Use at your own risk – any liability is disclaimed.
