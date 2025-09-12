@@ -147,7 +147,16 @@ String mqttPayload;
 DeviceAddress myDS18B20Address;
 String Adresse;
 unsigned long MQTTReconnect = 0;
+#define MQTT_QUEUEDEPTH 50                // Tiefe der MQTT-Queue - 50 Botschaften
+#define MQTT_QUEUEMAXWAITTIME 3           // Wartezeit für das Senden in eine Queue - danach Error!
+struct MqttJob {                          // Struktur der MQTT-Queue
+  char topic[128];                        // topic:   Topic auf den die Botschaft gesendet werden soll -> 180 Zeichen lang
+  char payload[256];                      // payload: Botschaft, die an das Topic gesendet werden soll. -> 256 Zeichen max.
+  bool retain;                            // retain:  true, wenn die Botschaft im Broker gespeichert bleibt und false, wenn
+};                                        // nur die angemeldeten User die Botschaft erhalten - diese dann vergessen wird.
 PubSubClient mqttClient(myWiFiClient);
+static QueueHandle_t mqttQueue;           // Queuedefinition für die MQTT-Queue
+static TaskHandle_t hmqtt;                // handler für den MQTT-Sender-Task
 
 // Anzahl der angeschlossenen DS18B20 - Sensoren
 int DS18B20_Count = 0; //Anzahl der erkannten DS18B20-Sensoren
@@ -217,6 +226,7 @@ float getAmp_SCT013(int);
 void getAmpCoreOn(void);
 void getAmpCoreOff(void);
 void thermalStop (void);
+bool mqttPublishQueue(const char*, const char*, bool);
 
 //-------------------------------------
 // Basisfunktion zum sicheren Reset
@@ -816,7 +826,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
   mqttTopicAC += "ac";
   if (str.startsWith("Test")) {
     if (debug) Serial.println("Test -> Test OK");
-    mqttClient.publish(mqttTopicAC.c_str(), "Test OK");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Test OK", false);
     tx_ac = 0;
   }
 
@@ -827,149 +837,149 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
   //debug-Modfikation  
   if ((tx_ac) && (str.startsWith("debug=0"))) {
     debug = 0;
-    mqttClient.publish(mqttTopicAC.c_str(), "debug=0 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "debug=0 umgesetzt", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("debug=1"))) {
     debug = 1;
-    mqttClient.publish(mqttTopicAC.c_str(), "debug=1 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "debug=1 umgesetzt", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("debug=2"))) {
     debug = 2;
-    mqttClient.publish(mqttTopicAC.c_str(), "debug=2 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "debug=2 umgesetzt", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("debug=3"))) {
     debug = 3;
-    mqttClient.publish(mqttTopicAC.c_str(), "debug=3 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "debug=3 umgesetzt", false);
     tx_ac = 0;
   }
   //panicMode-Modifikation
   if ((tx_ac) && (str.startsWith("panicMode=0"))) {
     panicMode = 0;
-    mqttClient.publish(mqttTopicAC.c_str(), "panicMode=0 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "panicMode=0 umgesetzt", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("panicMode=1"))) {
+    mqttPublishQueue(mqttTopicAC.c_str(), "panicMode=1 umgesetzt", false);
     panicStop();
-    mqttClient.publish(mqttTopicAC.c_str(), "panicMode=1 umgesetzt");
     tx_ac = 0;
   }
   //thermalError-Modifikation
   if ((tx_ac) && (str.startsWith("thermalError=0"))) {
     thermalError = 0;
-    mqttClient.publish(mqttTopicAC.c_str(), "thermalError=0 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "thermalError=0 umgesetzt", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("thermalError=1"))) {
     thermalError = 1;
     panicStop();
-    mqttClient.publish(mqttTopicAC.c_str(), "thermalError=1 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "thermalError=1 umgesetzt", false);
     tx_ac = 0;
   }
   //thermalLimit-Modifikation
   if ((tx_ac) && (str.startsWith("thermalLimit=0"))) {
     thermalLimit = 0;
-    mqttClient.publish(mqttTopicAC.c_str(), "thermalLimit=0 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "thermalLimit=0 umgesetzt", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("thermalLimit=1"))) {
     thermalStop();
-    mqttClient.publish(mqttTopicAC.c_str(), "thermalLimit=1 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "thermalLimit=1 umgesetzt", false);
     tx_ac = 0;
   }
   //Schaltbefehle der Phasen (einzeln)
   if ((tx_ac) && (str.startsWith("L1 ein"))) {
     switchPhase(1,1);
-    mqttClient.publish(mqttTopicAC.c_str(), "Phase 1 eingeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Phase 1 eingeschaltet", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("L2 ein"))) {
     switchPhase(2,1);
-    mqttClient.publish(mqttTopicAC.c_str(), "Phase 2 eingeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Phase 2 eingeschaltet", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("L3 ein"))) {
     switchPhase(3,1);
-    mqttClient.publish(mqttTopicAC.c_str(), "Phase 3 eingeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Phase 3 eingeschaltet", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("L1 aus"))) {
     switchPhase(1,0);
-    mqttClient.publish(mqttTopicAC.c_str(), "Phase 1 ausgeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Phase 1 ausgeschaltet", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("L2 aus"))) {
     switchPhase(2,0);
-    mqttClient.publish(mqttTopicAC.c_str(), "Phase 2 ausgeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Phase 2 ausgeschaltet", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("L3 aus"))) {
     switchPhase(3,0);
-    mqttClient.publish(mqttTopicAC.c_str(), "Phase 3 ausgeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Phase 3 ausgeschaltet", false);
     tx_ac = 0;
   }
   //Schaltbefehle der Phasen (mehrere)
   if ((tx_ac) && (str.startsWith("L12 ein"))) {
     switchPhase(1,1);
     switchPhase(2,1);
-    mqttClient.publish(mqttTopicAC.c_str(), "Phase 1 und 2 eingeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Phase 1 und 2 eingeschaltet", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("L12 aus"))) {
     switchPhase(1,0);
     switchPhase(2,0);
-    mqttClient.publish(mqttTopicAC.c_str(), "Phase 1 und 2 ausgeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Phase 1 und 2 ausgeschaltet", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("L23 ein"))) {
     switchPhase(2,1);
     switchPhase(3,1);
-    mqttClient.publish(mqttTopicAC.c_str(), "Phase 2 und 3 eingeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Phase 2 und 3 eingeschaltet", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("L23 aus"))) {
     switchPhase(2,0);
     switchPhase(3,0);
-    mqttClient.publish(mqttTopicAC.c_str(), "Phase 2 und 3 ausgeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Phase 2 und 3 ausgeschaltet", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("L13 ein"))) {
     switchPhase(1,1);
     switchPhase(3,1);
-    mqttClient.publish(mqttTopicAC.c_str(), "Phase 1 und 3 eingeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Phase 1 und 3 eingeschaltet", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("L13 aus"))) {
     switchPhase(1,0);
     switchPhase(3,0);
-    mqttClient.publish(mqttTopicAC.c_str(), "Phase 1 und 3 ausgeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Phase 1 und 3 ausgeschaltet", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("L123 ein"))) {
     switchPhase(1,1);
     switchPhase(2,1);
     switchPhase(3,1);
-    mqttClient.publish(mqttTopicAC.c_str(), "Phase 1,2 und 3 eingeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Phase 1,2 und 3 eingeschaltet", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("L123 aus"))) {
     switchPhase(1,0);
     switchPhase(2,0);
     switchPhase(3,0);
-    mqttClient.publish(mqttTopicAC.c_str(), "Phase 1,2 und 3 ausgeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Phase 1,2 und 3 ausgeschaltet", false);
     tx_ac = 0;
   }
   // Luefterschalung
   if ((tx_ac) && (str.startsWith("Fan ein"))) {
     switchFan(1);
-    mqttClient.publish(mqttTopicAC.c_str(), "Lüfter eingeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Lüfter eingeschaltet", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("Fan aus"))) {
     switchFan(0);
-    mqttClient.publish(mqttTopicAC.c_str(), "Lüfter ausgeschaltet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Lüfter ausgeschaltet", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("ADC_L1_corr="))) {
@@ -979,7 +989,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(ADC_L1_corr);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("ADC_L2_corr="))) {
@@ -989,7 +999,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(ADC_L2_corr);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("ADC_L3_corr="))) {
@@ -999,7 +1009,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(ADC_L3_corr);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("ADC_L1_zeroCorr="))) {
@@ -1009,7 +1019,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(ADC_L1_zeroCorr);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("ADC_L2_zeroCorr="))) {
@@ -1019,7 +1029,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(ADC_L2_zeroCorr);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("ADC_L3_zeroCorr="))) {
@@ -1029,7 +1039,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(ADC_L3_zeroCorr);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("tempTopLimit="))) {
@@ -1039,7 +1049,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(tempTopLimit);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("tempMaxLimit="))) {
@@ -1049,7 +1059,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(tempMaxLimit);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("tempHysterese="))) {
@@ -1059,7 +1069,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(tempHysterese);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("deltaT="))) {
@@ -1069,7 +1079,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(deltaT);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("minTemp="))) {
@@ -1079,7 +1089,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(minTemp);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("maxTemp="))) {
@@ -1089,7 +1099,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(maxTemp);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("phasen1limit="))) {
@@ -1099,7 +1109,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(phasen1limit);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("phasen2limit="))) {
@@ -1109,7 +1119,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(phasen2limit);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("phasen3limit="))) {
@@ -1119,38 +1129,38 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(phasen3limit);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(), false);
     tx_ac = 0;
   }
   // Phasenerror einstellen
   if ((tx_ac) && (str.startsWith("phase1error=0"))) {
     phase1error = 0;
-    mqttClient.publish(mqttTopicAC.c_str(), "phase1error = 0 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "phase1error = 0 umgesetzt", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("phase1error=1"))) {
     phase1error = 1;
-    mqttClient.publish(mqttTopicAC.c_str(), "phase1error = 1 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "phase1error = 1 umgesetzt", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("phase2error=0"))) {
     phase2error = 0;
-    mqttClient.publish(mqttTopicAC.c_str(), "phase2error = 0 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "phase2error = 0 umgesetzt", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("phase2error=1"))) {
     phase2error = 1;
-    mqttClient.publish(mqttTopicAC.c_str(), "phase2error = 1 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "phase2error = 1 umgesetzt", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("phase3error=0"))) {
     phase3error = 0;
-    mqttClient.publish(mqttTopicAC.c_str(), "phase3error = 0 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "phase3error = 0 umgesetzt", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("phase3error=1"))) {
     phase3error = 1;
-    mqttClient.publish(mqttTopicAC.c_str(), "phase3error = 1 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "phase3error = 1 umgesetzt", false);
     tx_ac = 0;
   } 
   //Zeit zwischen Schaltvorgang und Prüfung
@@ -1161,7 +1171,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage += String(phaseTimeCheck);
     mqttMessage += " umgesetzt";
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(),false);
     tx_ac = 0;
   }
   //ErrorLED aus
@@ -1169,21 +1179,21 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     mqttMessage = "ErrorLED ausgeschaltet";
     digitalWrite(LED_ERROR, LOW);
     if (debug > 2) Serial.println(mqttMessage);
-    mqttClient.publish(mqttTopicAC.c_str(), mqttMessage.c_str());
+    mqttPublishQueue(mqttTopicAC.c_str(), mqttMessage.c_str(),false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("checkError=0"))) {
     checkError = 0;
-    mqttClient.publish(mqttTopicAC.c_str(), "checkError = 0 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "checkError = 0 umgesetzt", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("checkError=1"))) {
     checkError = 1;
-    mqttClient.publish(mqttTopicAC.c_str(), "checkError = 1 umgesetzt");
+    mqttPublishQueue(mqttTopicAC.c_str(), "checkError = 1 umgesetzt", false);
     tx_ac = 0;
   }
   if ((tx_ac) && (str.startsWith("restart"))) {
-    mqttClient.publish(mqttTopicAC.c_str(), "reboot in einer Sekunde!");
+    mqttPublishQueue(mqttTopicAC.c_str(), "reboot in einer Sekunde!", false);
     if (debug) Serial.println("für Restart: alles aus & restart in 1s!");
     digitalWrite(PHASE1, HIGH);
     digitalWrite(PHASE2, HIGH);
@@ -1195,7 +1205,7 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     safeReset();
   }
   if ((tx_ac) && (str.startsWith("reboot"))) {
-    mqttClient.publish(mqttTopicAC.c_str(), "reboot in einer Sekunde!");
+    mqttPublishQueue(mqttTopicAC.c_str(), "reboot in einer Sekunde!", false);
     if (debug) Serial.println("für Restart: alles aus & restart in 1s!");
     digitalWrite(PHASE1, HIGH);
     digitalWrite(PHASE2, HIGH);
@@ -1207,13 +1217,13 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
     safeReset();
   }
   if ((tx_ac) && (str.startsWith("IrmsOn"))) {
-    mqttClient.publish(mqttTopicAC.c_str(), "Irms-Auswertung gestartet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Irms-Auswertung gestartet", false);
     if (debug) Serial.println("Irms-Auswertung gestartet");
     getAmpCoreOn();
     if (debug) Serial.println("Irms-Auswertung beendet");
   }  
   if ((tx_ac) && (str.startsWith("IrmsOff"))) {
-    mqttClient.publish(mqttTopicAC.c_str(), "Irms-Auswertung gestartet");
+    mqttPublishQueue(mqttTopicAC.c_str(), "Irms-Auswertung gestartet", false);
     if (debug) Serial.println("Irms-Auswertung gestartet");
     getAmpCoreOff();
     if (debug) Serial.println("Irms-Auswertung beendet");
@@ -1248,22 +1258,22 @@ void printDS18B20MQTT() {
     if (Adresse == Adresse2) mqttJson += ",\"Ort\":\"Temperatur h=Top #1\"}";
     if (Adresse == Adresse3) mqttJson += ",\"Ort\":\"Temperatur h=Top #2\"}";
     if (debug > 2) Serial.println("MQTT_JSON: " + mqttJson);
-    mqttClient.publish(mqttTopic.c_str(), mqttJson.c_str());
+    mqttPublishQueue(mqttTopic.c_str(), mqttJson.c_str(), false);
     //Temperatur
     mqttTopic = MQTT_SERIAL_PUBLISH_DS18B20 + String(i) + "/Temperatur";
     mqttPayload = String(myDS18B20.getTempCByIndex(i));
-    mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+    mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
     if (debug > 2) Serial.print("MQTT ID: ");
     if (debug > 2) Serial.println(mqttPayload);
     //ID
     mqttTopic = MQTT_SERIAL_PUBLISH_DS18B20 + String(i) + "/ID";
     mqttPayload = String(i);
-    mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+    mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
     if (debug > 2) Serial.print("MQTT Temperatur: ");
     if (debug > 2) Serial.println(mqttPayload);
     //Adresse
     mqttTopic = MQTT_SERIAL_PUBLISH_DS18B20 + String(i) + "/Adresse";
-    mqttClient.publish(mqttTopic.c_str(), Adresse.c_str());
+    mqttPublishQueue(mqttTopic.c_str(), Adresse.c_str(), false);
     if (debug > 2) Serial.print("MQTT Adresse: ");
     if (debug > 2) Serial.println(Adresse);
     //Ort
@@ -1271,14 +1281,14 @@ void printDS18B20MQTT() {
     if (Adresse == Adresse1) mqttPayload = "Temperatur h=max";
     if (Adresse == Adresse2) mqttPayload = "Temperatur h=Top #1";
     if (Adresse == Adresse3) mqttPayload = "Temperatur h=Top #2";
-    mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+    mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
     if (debug > 2) Serial.print("MQTT Ort: ");
     if (debug > 2) Serial.println(mqttPayload);
   }
   //Temperatur gemittelt
   mqttTopic = MQTT_SERIAL_PUBLISH_DS18B20 + String(i) + "/Temperatur_gemittelt";
   mqttPayload = String((tempTop1 + tempTop2) / 2.0);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("Gemittelte tempTop: ");
   if (debug > 2) Serial.println(mqttPayload);
 }
@@ -1292,23 +1302,23 @@ void printAmpMQTT(float amp, int p, int pOn) {
   mqttJson += ",\"Schaltzustand\":\"" + String(pOn) + "\"";
   mqttJson += ",\"Phase\":\"" + String(p) + "\"}";
   if (debug > 2) Serial.println("MQTT_JSON: " + mqttJson);
-  mqttClient.publish(mqttTopic.c_str(), mqttJson.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttJson.c_str(), false);
   //Strom
   mqttTopic = MQTT_SERIAL_PUBLISH_SCT013 + String(p-1) + "/Strom";
   mqttPayload = String(amp);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT Strom: ");
   if (debug > 2) Serial.println(mqttPayload);
   //Schaltzustand
   mqttTopic = MQTT_SERIAL_PUBLISH_SCT013 + String(p-1) + "/Schaltzustand";
   mqttPayload = String(pOn);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT Schaltzustand: ");
   if (debug > 2) Serial.println(mqttPayload);
   //Phase
   mqttTopic = MQTT_SERIAL_PUBLISH_SCT013 + String(p-1) + "/Phase";
   mqttPayload = String(p);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT Phase: ");
   if (debug > 2) Serial.println(mqttPayload);
 }
@@ -1325,14 +1335,14 @@ void printStateMQTT() {
   mqttJson += ",\"thermalError\":\"" + String(thermalError) + "\"";
   mqttJson += ",\"thermalLimit\":\"" + String(thermalLimit) + "\"}";
   if (debug > 2) Serial.println("MQTT_JSON: " + mqttJson);
-  mqttClient.publish(mqttTopic.c_str(), mqttJson.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttJson.c_str(), false);
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "JSON_1";
   mqttJson = "{\"WiFi_Signal_Strength\":\"" + String(WiFi.RSSI()) + "\"";
   mqttJson += ",\"WiFi_IP_Adress\":\"" + WiFi.localIP().toString() + "\"";
   mqttJson += ",\"WiFi_MAC_Adress\":\"" + WiFi.macAddress() + "\"}";
   if (debug > 2) Serial.println("MQTT_JSON: " + mqttJson);
-  mqttClient.publish(mqttTopic.c_str(), mqttJson.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttJson.c_str(), false);
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "JSON_2";
   mqttJson = "{\"Irms10\":\"" + String(Irms10) + "\"";
@@ -1342,40 +1352,40 @@ void printStateMQTT() {
   mqttJson += ",\"Irms30\":\"" + String(Irms30) + "\"";
   mqttJson += ",\"Irms31\":\"" + String(Irms31) + "\"}";
   if (debug > 2) Serial.println("MQTT_JSON: " + mqttJson);
-  mqttClient.publish(mqttTopic.c_str(), mqttJson.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttJson.c_str(), false);
   //panicMode
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "panicMode";
   mqttPayload = String(panicMode);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT panicMode: ");
   if (debug > 2) Serial.println(mqttPayload);
   //phase1error
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "phase1error";
   mqttPayload = String(phase1error);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT phase1error: ");
   if (debug > 2) Serial.println(mqttPayload);
   //phase2error
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "phase2error";
   mqttPayload = String(phase2error);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT phase2error: ");
   if (debug > 2) Serial.println(mqttPayload);
   //phase3error
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "phase3error";
   mqttPayload = String(phase3error);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT phase3error: ");
   if (debug > 2) Serial.println(mqttPayload);
   //checkError
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "checkError";
   mqttPayload = String(checkError);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT phase3error: ");
   if (debug > 2) Serial.println(mqttPayload);
   //lastError
@@ -1383,7 +1393,7 @@ void printStateMQTT() {
     mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
     mqttTopic += "lastError";
     mqttPayload = lastError;
-    mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+    mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
     if (debug > 2) Serial.print("LastError: ");
     if (debug > 2) Serial.println(mqttPayload);
   }
@@ -1391,78 +1401,78 @@ void printStateMQTT() {
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "WiFi_Signal_Strength";
   mqttPayload = WiFi.RSSI();
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("WiFi Signalstärke: ");
   if (debug > 2) Serial.println(mqttPayload);
   //WiFi IP-Adresse
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "WiFi_IP_Adress";
   mqttPayload = WiFi.localIP().toString();
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("WiFi IP-Adresse: ");
   if (debug > 2) Serial.println(mqttPayload);
   //WiFi MAC-Adresse
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "WiFi_MAC_Adress";
   mqttPayload = WiFi.macAddress();
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("WiFi MAC-Adresse: ");
   if (debug > 2) Serial.println(mqttPayload);
   //thermalLimit
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "thermalLimit";
   mqttPayload = String(thermalLimit);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT thermalLimit: ");
   if (debug > 2) Serial.println(mqttPayload);
   //thermalError
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "thermalError";
   mqttPayload = String(thermalError);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT thermalError: ");
   if (debug > 2) Serial.println(mqttPayload);
   //thermalMaxOverheat
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "thermalMaxOverheat";
   mqttPayload = String(thermalMaxOverheat);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT thermalMaxOverheat: ");
   if (debug > 2) Serial.println(mqttPayload);
   //Irmsxx - Ausgabe von Irms-Rohwerten
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "Irms10";
   mqttPayload = String(Irms10);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT Irms10: ");
   if (debug > 2) Serial.println(mqttPayload);
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "Irms11";
   mqttPayload = String(Irms11);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT Irms11: ");
   if (debug > 2) Serial.println(mqttPayload);  mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "Irms20";
   mqttPayload = String(Irms20);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT Irms20: ");
   if (debug > 2) Serial.println(mqttPayload);
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "Irms21";
   mqttPayload = String(Irms21);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT Irms21: ");
   if (debug > 2) Serial.println(mqttPayload);
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "Irms30";
   mqttPayload = String(Irms30);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT Irms30: ");
   if (debug > 2) Serial.println(mqttPayload);
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "Irms31";
   mqttPayload = String(Irms31);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT Irms31: ");
   if (debug > 2) Serial.println(mqttPayload);
 }
@@ -1480,7 +1490,7 @@ void printConfigMQTT() {
   mqttJson += ",\"maxTemp\":\"" + String(maxTemp) + "\"";
   mqttJson += ",\"thermalLimit\":\"" + String(thermalLimit) + "\"}";
   if (debug > 2) Serial.println("MQTT_JSON: " + mqttJson);
-  mqttClient.publish(mqttTopic.c_str(), mqttJson.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttJson.c_str(), false);
   //Teil 2
   mqttTopic = MQTT_SERIAL_PUBLISH_CONFIG;
   mqttTopic += "JSON_1";
@@ -1489,7 +1499,7 @@ void printConfigMQTT() {
   mqttJson += ",\"phasen3limit\":\"" + String(phasen2limit) + "\"";
   mqttJson += ",\"phaseTimeCheck\":\"" + String(phaseTimeCheck) + "\"}";
   if (debug > 2) Serial.println("MQTT_JSON: " + mqttJson);
-  mqttClient.publish(mqttTopic.c_str(), mqttJson.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttJson.c_str(), false);
  //Teil 3
   mqttTopic = MQTT_SERIAL_PUBLISH_CONFIG;
   mqttTopic += "JSON_2";
@@ -1500,7 +1510,7 @@ void printConfigMQTT() {
   mqttJson += ",\"ADC_L2_zeroCorr\":\"" + String(ADC_L2_zeroCorr) + "\"";
   mqttJson += ",\"ADC_L3_zeroCorr\":\"" + String(ADC_L3_zeroCorr) + "\"}";
   if (debug > 2) Serial.println("MQTT_JSON: " + mqttJson);
-  mqttClient.publish(mqttTopic.c_str(), mqttJson.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttJson.c_str(), false);
 }
 // MQTT Lüfterstatus senden
 void printFanMQTT() {
@@ -1508,7 +1518,7 @@ void printFanMQTT() {
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "fanOn";
   mqttPayload = String(fanOn);
-  mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+  mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
   if (debug > 2) Serial.print("MQTT fanOn: ");
   if (debug > 2) Serial.println(mqttPayload);
 }
@@ -1617,6 +1627,8 @@ void mqttConnect () {
 // MQTT Verbindungsprüfung 
 void checkMQTTconnetion() {
   BaseType_t rc;
+  String mqttTopic;
+  String mqttPayLoad;
   if (!mqttClient.connected()) {
     if (debug) Serial.println("MQTT Server Verbindung verloren...");
     if (debug) Serial.print("Disconnect Errorcode: ");
@@ -1624,12 +1636,18 @@ void checkMQTTconnetion() {
     //Vorbereitung errorcode MQTT (https://pubsubclient.knolleary.net/api#state)
     mqttTopic = MQTT_SERIAL_PUBLISH_BASIS + String("error");
     mqttPayload = String(String(++MQTTReconnect) + ". reconnect: ") + String("; MQTT disconnect rc=" + String(mqttClient.state()));
+    // 0	MQTT_CONNECTED	        Erfolgreich verbunden.
+    // 1	MQTT_CONNECTION_TIMEOUT	Verbindung zum Broker hat zu lange gedauert (Timeout).
+    // 2	MQTT_CONNECTION_LOST	  Verbindung ging verloren (nach dem Connect).
+    // 3	MQTT_CONNECT_FAILED	    Verbindung konnte nicht hergestellt werden (Socket fehlerhaft).
+    // 4	MQTT_DISCONNECTED	      Client ist aktuell nicht verbunden.
+    // 5	MQTT_CONNECTED_FAILED	  Broker hat die Verbindung abgelehnt (z. B. Authentifizierung)
     //safety first -> thermalLimit setzen und Phasen ausschalten
     thermalStop();
     //reconnect
     mqttConnect();
     //sende Fehlerstatus
-    mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+    mqttPublishQueue(mqttTopic.c_str(),mqttPayload.c_str(),false);
     //thermalLimits wieder einschalten
      rc = xSemaphoreTake(mutexStatus, portMAX_DELAY);
     assert(rc == pdPASS);
@@ -1639,7 +1657,7 @@ void checkMQTTconnetion() {
     //reconnect zurückmelden
     mqttTopic = MQTT_SERIAL_PUBLISH_BASIS + String("ac");
     mqttPayload = String("MQTT reconnect durchgeführt!");
-    mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+    mqttPublishQueue(mqttTopic.c_str(),mqttPayload.c_str(),false);
   }
   mqttClient.loop();
 }
@@ -1659,16 +1677,61 @@ static void MQTTwatchdog (void *args){
   for (;;){                        // Dauerschleife des Tasks
     // Watchdog zurücksetzen
     esp_task_wdt_reset();
-    //Lesen der Temperaturen
+    //Check der MQTT-Verbindung
     if (debug > 1) Serial.print("TickTime: ");
     if (debug > 1) Serial.print(ticktime);
     if (debug > 1) Serial.println(" | MQTTonlinePrüf-Task gestartet");
     checkMQTTconnetion();
-
     // Task schlafen legen - restart alle 2s = 2*1000 ticks = 2000 ticks
     // mit mqttClient.loop() wird auch der MQTTcallback ausgeführt!
     vTaskDelayUntil(&ticktime, 2000);
   }
+}
+
+//-------------------------------------
+//MQTT-MQTTSender-Task
+static void mqttSender (void *args){
+  MqttJob job;
+  BaseType_t rc;
+  esp_err_t er;
+  TickType_t ticktime;
+
+  //ticktime initialisieren
+  ticktime = xTaskGetTickCount();
+
+  for (;;){                        // Dauerschleife des Tasks
+    //Statusausgabe
+    if (debug > 1) Serial.print("TickTime: ");
+    if (debug > 1) Serial.print(ticktime);
+    if (debug > 1) Serial.println(" | MQTT-Sender-Task gestartet");
+    if (mqttClient.connected()) {
+      // Sendebereit -> MQTT-Queue kann geleert werden
+      while (xQueuePeek(mqttQueue, &job, 0) == pdPASS) {
+        if (mqttClient.connected()) {
+          rc = xQueueReceive(mqttQueue, &job, 0) == pdPASS;
+          mqttClient.publish(job.topic, job.payload, job.retain);
+          if (debug > 2) Serial.print("Topic: ");
+          if (debug > 2) Serial.println(job.topic);
+          if (debug > 2) Serial.print("Payload: ");
+          if (debug > 2) Serial.println(job.payload);
+          if (debug > 2) Serial.print("retain: ");
+          if (debug > 2) Serial.println(job.retain);
+          mqttClient.loop();  // Keepalive
+        }
+      }    
+    }    
+    // Task schlafen legen - restart alle 0.5s = 0.5*1000 ticks = 500 ticks
+    // mit mqttClient.loop() wird auch der MQTTcallback ausgeführt!
+    vTaskDelayUntil(&ticktime, 500);
+  }
+}
+//MQTT-Queue befüllen
+bool mqttPublishQueue(const char* topic, const char* payload, bool retain = false) {
+  MqttJob job;
+  strncpy(job.topic, topic, sizeof(job.topic) - 1);           // Absicherung gegen Buffer-Overflow
+  strncpy(job.payload, payload, sizeof(job.payload) - 1);     // Absicherung gegen Buffer-Overflow
+  job.retain = retain;
+  return xQueueSend(mqttQueue, &job, QUEUEMAXWAITTIME) == pdPASS;
 }
 
 //-------------------------------------
@@ -2015,7 +2078,7 @@ void readDS18B20() {
       mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
       mqttTopic += "lastError";
       mqttPayload = "nicht spezifizierter Temperatursensor gefunden! Reboot!";
-      mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+      mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
       if (debug > 2) Serial.print("LastError: ");
       if (debug > 2) Serial.println(mqttPayload);
       delay(500);
@@ -2033,7 +2096,7 @@ void readDS18B20() {
     mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
     mqttTopic += "lastError";
     mqttPayload = "Temperatursensor TTop1 außerhalb des Messbereichts: " + String(t1) + "[C]; Wiederholung: " + String(tempTSensorFail);
-    mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+    mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
     if (debug > 2) Serial.print("LastError: ");
     if (debug > 2) Serial.println(mqttPayload); //(debug > 2)
   }
@@ -2047,7 +2110,7 @@ void readDS18B20() {
     mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
     mqttTopic += "lastError";
     mqttPayload = "Temperatursensor TTop2 außerhalb des Messbereichts: " + String(t2) + "[C]; Wiederholung: " + String(tempTSensorFail);
-    mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+    mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
     if (debug > 2) Serial.print("LastError: ");
     if (debug > 2) Serial.println(mqttPayload);
   }
@@ -2060,7 +2123,7 @@ void readDS18B20() {
     mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
     mqttTopic += "lastError";
     mqttPayload = "Temperatursensor TMax außerhalb des Messbereichts: " + String(tMax) + "[C]; Wiederholung: " + String(tempTSensorFail);
-    mqttClient.publish(mqttTopic.c_str(), mqttPayload.c_str());
+    mqttPublishQueue(mqttTopic.c_str(), mqttPayload.c_str(), false);
     if (debug > 2) Serial.print("LastError: ");
     if (debug > 2) Serial.println(mqttPayload);
   }
@@ -2680,9 +2743,22 @@ void setup() {
   free3Queue = xQueueCreate(QUEUEDEPTH, sizeof(bool));
   assert(free3Queue);
   Serial.println("freeXQueue eingerichtet.");
+  //Queue für MQTT anlegen
+  mqttQueue = xQueueCreate(MQTT_QUEUEDEPTH, sizeof(MqttJob));
+  assert(mqttQueue);
   //Tasks starten
   int app_cpu = xPortGetCoreID();
   BaseType_t rc;
+  rc = xTaskCreatePinnedToCore(
+    mqttSender,                 //Taskroutine
+    "MQTTSenderTask",           //Taskname
+    2048,                       //StackSize
+    nullptr,                    //Argumente / Parameter
+    4,                          //Priorität
+    &hmqtt,                     //handler
+    app_cpu);                   //CPU_ID
+  assert(rc == pdPASS);
+  Serial.println("MQTT Sendertask gestartet.");
   rc = xTaskCreatePinnedToCore(
     integrityCheck,             //Taskroutine
     "SpannungsintegritaetTask", //Taskname
@@ -2786,7 +2862,7 @@ void setup() {
   String mqttTopicAC;
   mqttTopicAC = MQTT_SERIAL_PUBLISH_BASIS;
   mqttTopicAC += "ac";
-  mqttClient.publish(mqttTopicAC.c_str(), "Start durchgeführt.");
+  mqttPublishQueue(mqttTopicAC.c_str(), "Start durchgeführt.", false);
 }
 
 void loop() {
