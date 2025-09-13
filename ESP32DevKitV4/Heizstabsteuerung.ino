@@ -141,9 +141,6 @@ WiFiClient myWiFiClient;
 #define MQTT_SERIAL_PUBLISH_STATE "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/state/"
 #define MQTT_SERIAL_PUBLISH_CONFIG "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/config/"
 #define MQTT_SERIAL_PUBLISH_BASIS "SmartHome/Keller/Heizung/ESP32_Heizstabsteuerung/"
-String mqttTopic;
-String mqttJson;
-String mqttPayload;
 DeviceAddress myDS18B20Address;
 String Adresse;
 unsigned long MQTTReconnect = 0;
@@ -1237,6 +1234,9 @@ void mqttCallback(char* topic, byte* message, unsigned int length) {
 //Subfunktionen für MQTT-Status-Task
 // MQTT DS18B20 Status senden
 void printDS18B20MQTT() {
+  String mqttTopic;
+  String mqttJson;
+  String mqttPayload;
   int i;
   for (i = 0; i < DS18B20_Count; i++) {
     //MQTT-Botschaften
@@ -1294,6 +1294,9 @@ void printDS18B20MQTT() {
 }
 // MQTT Strom Status senden
 void printAmpMQTT(float amp, int p, int pOn) {
+  String mqttTopic;
+  String mqttJson;
+  String mqttPayload;
   if (p < 1) p=1;
   if (p > 3) p=3;
   mqttTopic = MQTT_SERIAL_PUBLISH_SCT013 + String(p-1) + "/JSON"; 
@@ -1324,6 +1327,9 @@ void printAmpMQTT(float amp, int p, int pOn) {
 }
 // MQTT Status Betrieb senden
 void printStateMQTT() {
+  String mqttTopic;
+  String mqttJson;
+  String mqttPayload;
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "JSON_0";
   mqttJson = "{\"panicMode\":\"" + String(panicMode) + "\"";
@@ -1479,6 +1485,8 @@ void printStateMQTT() {
 
 // MQTT Config und Parameter senden
 void printConfigMQTT() {
+  String mqttTopic;
+  String mqttJson;
   //Teil 1
   mqttTopic = MQTT_SERIAL_PUBLISH_CONFIG;
   mqttTopic += "JSON_0";
@@ -1514,6 +1522,8 @@ void printConfigMQTT() {
 }
 // MQTT Lüfterstatus senden
 void printFanMQTT() {
+  String mqttTopic;
+  String mqttPayload;
   //fanOn
   mqttTopic = MQTT_SERIAL_PUBLISH_STATE;
   mqttTopic += "fanOn";
@@ -1628,7 +1638,7 @@ void mqttConnect () {
 void checkMQTTconnetion() {
   BaseType_t rc;
   String mqttTopic;
-  String mqttPayLoad;
+  String mqttPayload;
   if (!mqttClient.connected()) {
     if (debug) Serial.println("MQTT Server Verbindung verloren...");
     if (debug) Serial.print("Disconnect Errorcode: ");
@@ -2049,6 +2059,8 @@ bool checkDS18B20Value (float t){
 }
 // Temperatursensoren auslesen
 void readDS18B20() {
+  String mqttTopic;
+  String mqttPayload;
   float t1 = 0.0;
   float t2 = 0.0;
   float tMax = 0.0;
@@ -2558,10 +2570,8 @@ static void displayUpdate (void *args){
 }
 
 void setup() {
-  //Watchdog starten
-  esp_err_t er;
-  // Set watchdog timeout to 5 minutes (300 seconds)
-  esp_task_wdt_init(300, true); // timeout in seconds, panic = true
+  String mqttTopic;
+  String mqttPayload;
   // Initialisierung und Plausibilitaetschecks
   Serial.begin(115200);
   while (!Serial)
@@ -2746,6 +2756,8 @@ void setup() {
   //Queue für MQTT anlegen
   mqttQueue = xQueueCreate(MQTT_QUEUEDEPTH, sizeof(MqttJob));
   assert(mqttQueue);
+  // Set watchdog timeout to 5 minutes (300 seconds)
+  esp_task_wdt_init(300, true); // timeout in seconds, panic = true
   //Tasks starten
   int app_cpu = xPortGetCoreID();
   BaseType_t rc;
