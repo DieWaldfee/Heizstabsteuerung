@@ -1,9 +1,6 @@
 // secrets.h - Vorlage
 // Kopiere diese Datei nach secrets.h und trage deine Zugangsdaten ein.
-// secrets.h wird NICHT ins Git eingecheckt!
-
-#ifndef SECRETS_H
-#define SECRETS_H
+#pragma once
 
 // WiFi-Zugangsdaten
 #define HOSTNAME "ESP32_Heizstabsteuerung"
@@ -18,5 +15,3 @@ const char* password = "DEIN_WLAN_PASSWORT";
 
 // Hardwareauswahl: Lochrasterplatine 1 oder Print-Platine 2
 #define HARDWARE_VERSION 2  // 1 = V1.0 (OK+ERROR), 2 = V2.0 (OK+MSG+ERROR)
-
-#endif // SECRETS_H
