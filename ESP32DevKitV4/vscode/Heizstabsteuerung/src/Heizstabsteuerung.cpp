@@ -10,12 +10,9 @@
 #include <Wire.h>
 #include <esp_task_wdt.h>
 
+#include "hardware.h"
 #include "secrets.h"
 
-#define LED_ERROR 23
-#define LED_MSG 4
-#define LED_OK 19
-#define ONE_WIRE_BUS 25
 static byte debug = 0;
 static String lastError = "";
 
@@ -31,15 +28,6 @@ int volatile panicMode = 0;           // Indikator für die Zwangsabschaltung - 
 
 // Analogeingaenge zur Stromueberwachung
 // https://randomnerdtutorials.com/esp32-adc-analog-read-arduino-ide/
-#define ADC_L1 \
-  34  // Sensorpin für das Auslesen der Äquivalenzspannung des Phasestromsensors
-      // 1 (STC-013)
-#define ADC_L2 \
-  35  // Sensorpin für das Auslesen der Äquivalenzspannung des Phasestromsensors
-      // 2 (STC-013)
-#define ADC_L3 \
-  36                           // Sensorpin für das Auslesen der Äquivalenzspannung des Phasestromsensors
-                               // 3 (STC-013)
 float volatile amp1 = 0.0;     // Phasenstrom Phase 1
 float volatile amp2 = 0.0;     // Phasenstrom Phase 2
 float volatile amp3 = 0.0;     // Phasenstrom Phase 3
@@ -60,27 +48,17 @@ EnergyMonitor emon1;
 EnergyMonitor emon2;
 EnergyMonitor emon3;
 // Kalibrierung auf den verwendeten Sensor erforderlich - Ausgleich von
-// Toleranzen!
-float ADC_Sensor[3] = {15.0, 15.0, 15.0};  // Sensorwert pro Volt Ausgabe je Phase (15.0 bei 15A/V)
-float ADC_L1_corr = 15.00;                 // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L1_corr = Aist/15A
-                                           // => ADC_L1_corr = Asoll/Aist * 15A)
-float ADC_L2_corr = 14.66;                 // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L2_corr = Aist/15A
-                                           // => ADC_L2_corr = Asoll/Aist * 15A)
-float ADC_L3_corr = 14.96;                 // Korrektur des L1-Sensors (Peaklast) (Asoll/ADC_L3_corr = Aist/15A
-                                           // => ADC_L3_corr = Asoll/Aist * 15A)
-float ADC_L1_zeroCorr = 0.12;              // Basiskorrketur bei 0A (Irms_korr = Irms - zeroCorr)@0A -
-                                           // korrigiert Unzulänglichkeiten der Widerstände
-float ADC_L2_zeroCorr = 0.10;              // Basiskorrketur bei 0A (Irms_korr = Irms - zeroCorr)@0A -
-                                           // korrigiert Unzulänglichkeiten der Widerstände
-float ADC_L3_zeroCorr = 0.11;              // Basiskorrketur bei 0A (Irms_korr = Irms - zeroCorr)@0A -
-                                           // korrigiert Unzulänglichkeiten der Widerstände
+// Toleranzen! Initialwerte aus hardware.h – via MQTT zur Laufzeit änderbar.
+float ADC_Sensor[3] = {15.0, 15.0, 15.0};       // Sensorwert pro Volt Ausgabe je Phase (15.0 bei 15A/V)
+float ADC_L1_corr = ADC_L1_CORR_INIT;           // Korrektur L1-Sensor (Peaklast)
+float ADC_L2_corr = ADC_L2_CORR_INIT;           // Korrektur L2-Sensor (Peaklast)
+float ADC_L3_corr = ADC_L3_CORR_INIT;           // Korrektur L3-Sensor (Peaklast)
+float ADC_L1_zeroCorr = ADC_L1_ZERO_CORR_INIT;  // Nullpunktkorrektur L1 @0A
+float ADC_L2_zeroCorr = ADC_L2_ZERO_CORR_INIT;  // Nullpunktkorrektur L2 @0A
+float ADC_L3_zeroCorr = ADC_L3_ZERO_CORR_INIT;  // Nullpunktkorrektur L3 @0A
 
 // Schaltausgaenge für Phase 1-3 und Luefter
-#define PHASE1 16                                   // Steuerpin Phase 1 – bleibt für Notabschaltungen
-#define PHASE2 17                                   // Steuerpin Phase 2 – bleibt für Notabschaltungen
-#define PHASE3 18                                   // Steuerpin Phase 3 – bleibt für Notabschaltungen
 const int PHASE_PIN[3] = {PHASE1, PHASE2, PHASE3};  // Array für switchPhase() / queuePhaseCheck()
-#define FAN0 32                                     // Steuerpin für die Lüftung on/off
 volatile int phaseOn[3] = {0, 0, 0};                // Schaltzustände L1/L2/L3: on(<>0) / off(=0)
 int volatile fanOn = 0;                             // Indikator, ob der Lüfter on (<>1) / off (=0) geschaltet ist
 int phaseError[3] = {0, 0, 0};                      // Fehlerflag L1/L2/L3 (Strom/Schaltinkonsistenz)
@@ -112,13 +90,6 @@ static PhaseCheckConfig phaseCfg1;
 static PhaseCheckConfig phaseCfg2;
 static PhaseCheckConfig phaseCfg3;
 
-// Verbindung zum Display via i2c (Standard-Adresse 0x27)
-//  Anzahl der Zeilen und Spalten setzen
-#define LCDADRESS 0x27
-#define LCDCOLUMNS 16
-#define LCDROWS 2
-#define SDA_PIN 21
-#define SCL_PIN 22
 int volatile displayCounter = 0;  // Zähler für die Anzahl der Displayrefreshs. Dient zum zyklischen
                                   // Reinitialisieren des LCD-Treibers
 #define MAX_REFRESH_LCD 100       // Anzahl der Displayrefreshs bis das Display reinitialisiert wird.
@@ -170,48 +141,31 @@ int DS18B20_Count = 0;  // Anzahl der erkannten DS18B20-Sensoren
 // 0x62) => Slot 2 DS18B20[1]: 23.75 *C (0x28, 0xd2, 0x57, 0x57, 0x04, 0xe1,
 // 0x3c, 0x1c) => Slot 1 DS18B20[2]: 23.19 *C (0x28, 0xba, 0x9b, 0x57, 0x04,
 // 0xe1, 0x3c, 0x7d) => Slot 3
-float volatile tempMax = 0.0;                                             // Sensor in Slot 1
-float volatile tempTop1 = 0.0;                                            // Sensor in Slot 2
-float volatile tempTop2 = 0.0;                                            // Sensor in Slot 3
-const char* Adresse1 = "0x28, 0xff, 0x64, 0x1f, 0x41, 0xe9, 0xb9, 0x17";  // temp_Max - Adresee
-                                                                          // kann über den
-                                                                          // Debugmodus (debug = 1)
-                                                                          // ermittelt werden aus
-                                                                          // dem serial Monitor
-const char* Adresse2 = "0x28, 0xcb, 0x1d, 0x43, 0xd4, 0xe8, 0x21, 0x78";  // tempTop1 - Adresee
-                                                                          // kann über den
-                                                                          // Debugmodus (debug = 1)
-                                                                          // ermittelt werden aus
-                                                                          // dem serial Monitor
-const char* Adresse3 = "0x28, 0xf3, 0xf8, 0x43, 0xd4, 0xad, 0x40, 0x63";  // tempTop2 - Adresee
-                                                                          // kann über den
-                                                                          // Debugmodus (debug = 1)
-                                                                          // ermittelt werden aus
-                                                                          // dem serial Monitor
-float tempTopLimit = 85.0;         // Ab dieser Temperatur werden die Phasen 1, 2 und 3
-                                   // abgeschalten und der Indikator thermalLimit = 1
-float tempMaxLimit = 90.0;         // Ab dieser Temperatur werden die Phasen 1, 2 und 3 abgeschalten und
-                                   // der Indikator thermalLimit = 1 thermalError = 1 & panicMode = 1 ->
-                                   // Zwangsabschaltung!
-float tempHysterese = 1.0;         // Phasenzuschaltung erst bei temp < tempTopLimit - tempHysterese -
-                                   // verhindert schnelles Schalten um das Limit
-float deltaT = 2.0;                // Limit des Betrags von Differenz zwischen tempTop1
-                                   // tempTop2 (|tempTop1-tempTop2|)
-float minTemp = 10.0;              // untere Plausibilitätsgrenze für Temperatursignale. Bei
-                                   // Unterschreitung => Notabschaltung, da ggf. Sensor defekt
-float maxTemp = 95.0;              // obere Plausibilitätsgrenze für Temperatursignale. Bei
-                                   // Überschreitung => Notabschaltung, da ggf. Sensor defekt
-int volatile tempTSensorFail = 0;  // Fehlercounter zur Temperaturmessung - Resilienz gegen gelegentliche
-                                   // Fehlauswertungen der Temperatursensoren
-int maxTSensorFail = 6;            // maximal zulässige, hintereinander folgende
-                                   // Sensorfehler - danach panicStop
-float DS18B20_minValue = -55.0;    // unterster Messwert im Messbereich [°C]
-float DS18B20_maxValue = 125.0;    // unterster Messwert im Messbereich [°C]
-#define DS18B20_RESOLUTION \
-  10                       // 9bit: +-0.5°C @ 93.75 ms; 10bit: +-0.25°C @ 187.5 ms; 11bit: +-0.125°C
-                           // @ 375 ms; 12bit: +-0.0625°C @ 750 ms
-#define DS18B20_DELAY 20  // Wartezeit nach angetriggerter Messung [ms]
-
+float volatile tempMax = 0.0;              // Sensor in Slot 1
+float volatile tempTop1 = 0.0;             // Sensor in Slot 2
+float volatile tempTop2 = 0.0;             // Sensor in Slot 3
+const char* Adresse1 = DS18B20_ADDR_MAX;   // tempMax  – Adresse aus hardware.h
+const char* Adresse2 = DS18B20_ADDR_TOP1;  // tempTop1 – Adresse aus hardware.h
+const char* Adresse3 = DS18B20_ADDR_TOP2;  // tempTop2 – Adresse aus hardware.h
+float tempTopLimit = 85.0;                 // Ab dieser Temperatur werden die Phasen 1, 2 und 3
+                                           // abgeschalten und der Indikator thermalLimit = 1
+float tempMaxLimit = 90.0;                 // Ab dieser Temperatur werden die Phasen 1, 2 und 3 abgeschalten und
+                                           // der Indikator thermalLimit = 1 thermalError = 1 & panicMode = 1 ->
+                                           // Zwangsabschaltung!
+float tempHysterese = 1.0;                 // Phasenzuschaltung erst bei temp < tempTopLimit - tempHysterese -
+                                           // verhindert schnelles Schalten um das Limit
+float deltaT = 2.0;                        // Limit des Betrags von Differenz zwischen tempTop1
+                                           // tempTop2 (|tempTop1-tempTop2|)
+float minTemp = 10.0;                      // untere Plausibilitätsgrenze für Temperatursignale. Bei
+                                           // Unterschreitung => Notabschaltung, da ggf. Sensor defekt
+float maxTemp = 95.0;                      // obere Plausibilitätsgrenze für Temperatursignale. Bei
+                                           // Überschreitung => Notabschaltung, da ggf. Sensor defekt
+int volatile tempTSensorFail = 0;          // Fehlercounter zur Temperaturmessung - Resilienz gegen gelegentliche
+                                           // Fehlauswertungen der Temperatursensoren
+int maxTSensorFail = 6;                    // maximal zulässige, hintereinander folgende
+                                           // Sensorfehler - danach panicStop
+float DS18B20_minValue = -55.0;            // unterster Messwert im Messbereich [°C]
+float DS18B20_maxValue = 125.0;            // unterster Messwert im Messbereich [°C]
 // Initialisiere OneWire und Thermosensor(en)
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature myDS18B20(&oneWire);
@@ -2340,6 +2294,38 @@ void setup() {
     delay(1000);
     while (true) {
       // blinke bis zur Unendlichkeit...
+      digitalWrite(LED_ERROR, HIGH);
+      delay(250);
+      digitalWrite(LED_ERROR, LOW);
+      delay(250);
+    }
+  }
+  // Prüfung: sind alle drei konfigurierten Adressen unter den gefundenen Sensoren?
+  bool foundMax = false, foundTop1 = false, foundTop2 = false;
+  for (int i = 0; i < DS18B20_Count; i++) {
+    myDS18B20.getAddress(myDS18B20Address, i);
+    String adresse = formatDS18B20Address(myDS18B20Address);
+    if (adresse == Adresse1) foundMax = true;
+    if (adresse == Adresse2) foundTop1 = true;
+    if (adresse == Adresse3) foundTop2 = true;
+  }
+  if (!foundMax || !foundTop1 || !foundTop2) {
+    Serial.println("DS18B20-Adressfehler! Erwartete Adressen nicht gefunden:");
+    if (!foundMax) Serial.println("  FEHLT tempMax:  " + String(Adresse1));
+    if (!foundTop1) Serial.println("  FEHLT tempTop1: " + String(Adresse2));
+    if (!foundTop2) Serial.println("  FEHLT tempTop2: " + String(Adresse3));
+    Serial.println("Gefundene Adressen:");
+    for (int i = 0; i < DS18B20_Count; i++) {
+      myDS18B20.getAddress(myDS18B20Address, i);
+      Serial.println("  DS18B20[" + String(i) + "]: " + formatDS18B20Address(myDS18B20Address));
+    }
+    digitalWrite(LED_OK, LOW);
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("DS18B20 Fehler!");
+    lcd.setCursor(0, 1);
+    lcd.print("Adresse falsch!");
+    while (true) {
       digitalWrite(LED_ERROR, HIGH);
       delay(250);
       digitalWrite(LED_ERROR, LOW);
