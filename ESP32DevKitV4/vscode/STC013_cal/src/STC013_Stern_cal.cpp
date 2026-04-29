@@ -1,4 +1,5 @@
-// STC013_cal.cpp — Kalibrierungssketch für SCT-013 Stromsensoren an einem ESP32
+// STC013_Stern_cal.cpp — Kalibrierungssketch für SCT-013 Stromsensoren an einem ESP32
+// bei Beschaltung im Stern -> L1, L2 und L3 sind separat schaltbar
 //
 // Zweck:
 //   Dieser Sketch misst die Ausgangsströme von drei Phasen über SCT-013-Stromsensoren
