@@ -35,15 +35,17 @@ Eine Übersichtsversion der Platine ist mit Fritzing umgesetzt und enthält auch
 
 ### Abhängigkeiten (PlatformIO – platformio.ini):
 
-OneWire.h: OneWire git-master (v2.3.7 inkompatibel mit ESP-IDF 5.x; v2.3.8 hat einen Bug – git-master enthält den Fix)<br>
-DallasTemperature.h: DallasTemperature by Miles Burton v4.0.4<br>
-WiFi.h:Arduino / ESP32-Framework 3.3.8<br>
-WiFiClient.h:Arduino / ESP32-Framework 3.3.8<br>
-PubSubClient.h:PubSubClient by Nick O'Leary v2.8<br>
-Wire.h:Arduino / ESP32-Framework 3.3.8<br>
-LiquidCrystal_I2C.h:LiquidCrystal_I2C by Frank de Brabander ^1.1.0 (https://github.com/marcoschwartz/LiquidCrystal_I2C)<br>
-EmonLib.h: EmonLib-esp32 – ESP32-optimierter Fork (https://github.com/Savjee/EmonLib-esp32)<br>
-esp_task_wdt.h: Espressif Framework 3.3.8<br>
+| Header                | Bibliothek                                                                                                  |
+| --------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `OneWire.h`           | OneWire git-master (v2.3.7 inkompatibel mit ESP-IDF 5.x; v2.3.8 hat einen Bug – git-master enthält den Fix) |
+| `DallasTemperature.h` | DallasTemperature by Miles Burton v4.0.4                                                                    |
+| `WiFi.h`              | Arduino / ESP32-Framework                                                                                   |
+| `WiFiClient.h`        | Arduino / ESP32-Framework                                                                                   |
+| `PubSubClient.h`      | PubSubClient by Nick O'Leary v2.8                                                                           |
+| `Wire.h`              | Arduino / ESP32-Framework                                                                                   |
+| `LiquidCrystal_I2C.h` | LiquidCrystal_I2C by Frank de Brabander ^1.1.0                                                              |
+| `EmonLib.h`           | EmonLib-esp32 – ESP32-optimierter Fork                                                                      |
+| `esp_task_wdt.h`      | Espressif Framework                                                                                         |
 
 ### Board ESP32
 
@@ -76,7 +78,7 @@ Zugehöriges Projekt: https://github.com/users/DieWaldfee/projects/1
   &nbsp;&nbsp;&nbsp;<img src="https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/8c7e2ce7-50d5-40ab-afa6-d198717da527" height="120">
 - Adressen der DS18B20-Sensoren ermitteln und in `src/Heizstabsteuerung.cpp` eintragen. Hierzu muss der Debuglevel auf 1 gestellt werden (MQTT-Befehl `debug=1`) und die Ausgabe im Serial Monitor beobachtet werden. OnStart gibt der ESP32 die Sensoradressen aus.<br>
   &nbsp;&nbsp;&nbsp;<img src="https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/c384a3db-b12c-4c20-9861-f3e6ab5a7247" height="50">
-- Kalibrierung der Stromsensoren: Hierzu das separate Projekt **STC013_cal** verwenden (siehe Abschnitt _Nachträgliche Kalibrierung_). <br>
+- Kalibrierung der Stromsensoren: Hierzu das separate Projekt **STC013_cal** (Sternverschaltung) bzw. **STC013_Dreieck_cal** (Dreiecksverschaltung) verwenden (siehe Abschnitt _Nachträgliche Kalibrierung_). <br>
   &nbsp;&nbsp;&nbsp;<img src="https://github.com/DieWaldfee/Heizstabsteuerung/assets/66571311/318f3560-bf0c-43aa-8174-7c725d262b2a" height="120">
 - Bei Fehlern kann per MQTT-Befehl `debug=<0-3>` der Debug-Level für die Ausgaben auf den Serial Monitor eingestellt werden: 0 = BootUp only; 1 = Basic; 2 = Advanced; 3 = Absolut
 - ESP-Software wird über PlatformIO auf das "ESP32 Dev Kit" compiliert und übertragen.
@@ -131,14 +133,79 @@ Zugehöriges Projekt: https://github.com/users/DieWaldfee/projects/1
 
 **Nachträgliche Kalibrierung der Strommessung:**
 
-Zur Kalibrierung der SCT-013-Stromsensoren steht das separate PlatformIO-Projekt **STC013_cal** bereit. Es misst automatisch Nullpunkt und Peaklast und gibt die berechneten Korrekturwerte (`ADC_LX_corr`, `ADC_LX_zeroCorr`) direkt auf dem Serial Monitor aus.
+Die SCT-013-Stromsensoren müssen für eine genaue Leistungsmessung individuell kalibriert werden, da ADC-Eingangswiderstände und Sensorexemplare streuen. Für die Kalibrierung stehen zwei separate PlatformIO-Projekte bereit — je nach Verschaltung des Heizstabs.
 
-Vorgehensweise:
+**Voraussetzungen:**
 
-- Referenzströme unter Last mit einem Zangenampermeter messen.
-- Gemessene Werte in `STC013_cal.cpp` eintragen (`Irms_L1_xA`, `Irms_L2_xA`, `Irms_L3_xA`).
-- Sketch flashen und Serial Monitor öffnen (115200 Baud) – der Sketch gibt die neuen Kalibrierwerte aus.
-- Berechnete Werte `ADC_LX_corr` und `ADC_LX_zeroCorr` in `src/Heizstabsteuerung.cpp` übernehmen und neu flashen.
+- Zangenampermeter zur Referenzmessung an allen drei Phasen
+- Serieller Monitor (115200 Baud)
+- Der Heizstab muss während der Lastmessung vollständig betriebsbereit angeschlossen sein
+
+---
+
+**Sternverschaltung — `STC013_cal` / `STC013_cal.cpp`**
+
+Bei einem sternverschalteten Heizstab trägt jede Phase eine unabhängige Wicklung. Die Phasen werden nacheinander einzeln zugeschaltet.
+
+Ablauf:
+
+1. Referenzwerte mit dem Zangenampermeter unter Last an L1, L2 und L3 messen.
+2. Die gemessenen Ströme in den Variablen `Irms_L1_xA`, `Irms_L2_xA`, `Irms_L3_xA` eintragen.
+3. Sketch flashen und seriellen Monitor öffnen.
+
+Der Sketch führt für jede Phase automatisch zwei Messreihen durch:
+
+- **Nullmessung** (Last aus): 10 Messungen ohne Strom; die ersten 3 werden verworfen. Der Mittelwert der verbleibenden 7 Messungen ergibt den empfohlenen neuen Wert für `ADC_LX_zeroCorr`. Dieser Offset korrigiert den Leckstrom des Sensors im stromlosen Zustand.
+- **Lastmessung** (Last ein): Das zugehörige SSR wird zugeschaltet. Aus dem Mittelwert der 7 gültigen Messungen und dem Referenzwert vom Zangenampermeter berechnet der Sketch den neuen `ADC_LX_corr`-Faktor nach der Formel:
+
+```
+ADC_LX_corr_neu = (Irms_Referenz / Irms_gemessen) * ADC_LX_corr_alt
+```
+
+4\. Die ausgegebenen Korrekturwerte für `ADC_LX_corr` und `ADC_LX_zeroCorr` in `src/Heizstabsteuerung.cpp` übernehmen und neu flashen.
+
+Der `loop()` wiederholt die gesamte Messreihe automatisch, sodass mehrere Durchläufe für eine stabile Mittelung genutzt werden können.
+
+---
+
+**Dreiecksverschaltung — `STC013_Dreieck_cal` / `STC013_Dreieck_cal.cpp`**
+
+Bei einem dreiecksverschalteten Heizstab fließen die Strangströme durch die Wicklungen zwischen den Phasen. Die Kalibrierung erfolgt stufenweise, weil sich der Laststrom in L3 erst bei Stufe 2 (alle drei Phasen aktiv) vollständig ausbildet.
+
+Schaltstufen:
+
+| Stufe | Aktive Phasen | Beschreibung                            |
+| ----- | ------------- | --------------------------------------- |
+| 1     | L1 + L2       | Eine Dreieckwicklung zwischen L1 und L2 |
+| 2     | L1 + L2 + L3  | Alle drei Wicklungen aktiv              |
+
+Ablauf:
+
+1. Referenzwerte mit dem Zangenampermeter messen:
+   - L1 und L2 in **Stufe 1** (nur L1 + L2 eingeschaltet)
+   - L3 in **Stufe 2** (alle drei Phasen eingeschaltet)
+2. Werte eintragen: `Irms_L1_xA` und `Irms_L2_xA` für Stufe 1, `Irms_L3_xA` für Stufe 2.
+3. Sketch flashen und seriellen Monitor öffnen.
+
+Der Sketch führt zunächst Nullmessungen für alle drei Sensoren durch (alle Phasen aus), dann:
+
+- **Stufe 1**: L1 und L2 werden zugeschaltet — Kalibrierung von `ADC_L1_corr` und `ADC_L2_corr`
+- **Stufe 2**: L3 wird zusätzlich zugeschaltet — Kalibrierung von `ADC_L3_corr`
+
+Auch hier werden je 10 Messungen durchgeführt, die ersten 3 verworfen und aus den verbleibenden 7 der Mittelwert gebildet. Die Korrekturformel ist identisch zur Sternverschaltung.
+
+4\. Die ausgegebenen Korrekturwerte für `ADC_LX_corr` und `ADC_LX_zeroCorr` in `src/Heizstabsteuerung.cpp` übernehmen und neu flashen.
+
+---
+
+**Kalibrierparameter in `src/Heizstabsteuerung.cpp`:**
+
+| Parameter                                                 | Bedeutung                                            |
+| --------------------------------------------------------- | ---------------------------------------------------- |
+| `ADC_L1_corr` / `ADC_L2_corr` / `ADC_L3_corr`             | Skalierungsfaktor für EmonLib (Rohwert → Ampere)     |
+| `ADC_L1_zeroCorr` / `ADC_L2_zeroCorr` / `ADC_L3_zeroCorr` | Offset-Korrektur für Leckstrom bei stromlosem Sensor |
+
+---
 
 Alternativ kann die manuelle Methode über MQTT verwendet werden:
 
